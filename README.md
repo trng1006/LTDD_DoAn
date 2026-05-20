@@ -1,6 +1,6 @@
-# UngDungDangKiNhomVaChonDeTai
+# DeTai04_UngDungDangKyNhomVaDeTai
 
-A new Flutter project.
+A new Flutter project for Group and Topic Registration.
 
 ## Getting Started
 
