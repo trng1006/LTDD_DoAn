@@ -14,7 +14,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _selectedRole = 'student';
 
   @override
   void dispose() {
@@ -26,9 +25,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() {
     if (_formKey.currentState!.validate()) {
-      // Mock register logic
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đăng ký thành công! Vui lòng đăng nhập.')),
+        const SnackBar(content: Text('Đăng ký thành công! (Chỉ dành cho Sinh viên)')),
       );
       Navigator.pop(context);
     }
@@ -37,12 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Đăng ký'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Theme.of(context).colorScheme.primary,
-      ),
+      appBar: AppBar(title: const Text('Đăng ký Sinh viên')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -51,15 +44,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Tạo tài khoản mới',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 28),
-                ),
+                Text('Tạo tài khoản mới',
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 28)),
                 const SizedBox(height: 8),
-                Text(
-                  'Điền đầy đủ thông tin để đăng ký hệ thống',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                const Text('Hệ thống chỉ cho phép Sinh viên tự đăng ký.'),
                 const SizedBox(height: 32),
                 CustomTextField(
                   label: 'Họ và tên',
@@ -71,10 +59,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
                 CustomTextField(
                   label: 'Email',
-                  hint: 'Nhập email của bạn',
+                  hint: 'sv... @gmail.com',
                   prefixIcon: Icons.email_outlined,
                   controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
                   validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập email' : null,
                 ),
                 const SizedBox(height: 16),
@@ -86,26 +73,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _passwordController,
                   validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
                 ),
-                const SizedBox(height: 24),
-                const Text('Vai trò:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 8),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'student', label: Text('Sinh viên')),
-                    ButtonSegment(value: 'lecturer', label: Text('Giảng viên')),
-                  ],
-                  selected: {_selectedRole},
-                  onSelectionChanged: (Set<String> newSelection) {
-                    setState(() {
-                      _selectedRole = newSelection.first;
-                    });
-                  },
-                ),
                 const SizedBox(height: 48),
-                CustomButton(
-                  text: 'Đăng ký',
-                  onPressed: _register,
-                ),
+                CustomButton(text: 'Đăng ký', onPressed: _register),
               ],
             ),
           ),

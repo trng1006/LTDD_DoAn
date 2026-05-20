@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/auth_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/group/create_group_screen.dart';
+import 'package:ungdungdangkinhomvachondetai/screens/group/group_detail_screen.dart';
 
 class ManageGroupScreen extends StatelessWidget {
   const ManageGroupScreen({super.key});
@@ -50,7 +51,7 @@ class ManageGroupScreen extends StatelessWidget {
                     contentPadding: const EdgeInsets.all(16),
                     leading: CircleAvatar(
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                      child: Text(group.name.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white)),
+                      child: Text(group.name.isNotEmpty ? group.name.substring(0, 1).toUpperCase() : 'G', style: const TextStyle(color: Colors.white)),
                     ),
                     title: Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Column(
@@ -65,7 +66,12 @@ class ManageGroupScreen extends StatelessWidget {
                     ),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
-                      // Navigate to group detail
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => GroupDetailScreen(group: group),
+                        ),
+                      );
                     },
                   ),
                 );

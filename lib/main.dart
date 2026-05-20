@@ -1,17 +1,20 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/auth_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
+import 'package:ungdungdangkinhomvachondetai/providers/topic_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/routes/app_pages.dart';
 import 'package:ungdungdangkinhomvachondetai/core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GroupProvider()),
+        ChangeNotifierProvider(create: (_) => TopicProvider()),
       ],
       child: const MyApp(),
     ),
@@ -24,7 +27,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ứng Dụng Đăng Ký Nhóm',
+      title: 'Hệ thống Đăng ký Đề tài',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       initialRoute: AppRoutes.login,

@@ -14,12 +14,12 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _identityController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identityController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -28,12 +28,18 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       await authProvider.login(
-        _emailController.text.trim(),
+        _identityController.text.trim(),
         _passwordController.text.trim(),
       );
       
-      if (mounted && authProvider.user != null) {
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      if (mounted) {
+        if (authProvider.user != null) {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tài khoản hoặc mật khẩu không đúng!')),
+          );
+        }
       }
     }
   }
@@ -66,23 +72,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Vui lòng đăng nhập để tiếp tục',
+                    'Sử dụng tài khoản mặc định sv01, gv01 hoặc admin',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 48),
                   CustomTextField(
-                    label: 'Email',
-                    hint: 'Nhập email của bạn',
-                    prefixIcon: Icons.email_outlined,
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập email' : null,
+                    label: 'Tài khoản hoặc Email',
+                    hint: 'sv01 / gv01 / admin',
+                    prefixIcon: Icons.person_outline,
+                    controller: _identityController,
+                    validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập tài khoản' : null,
                   ),
                   const SizedBox(height: 16),
                   CustomTextField(
                     label: 'Mật khẩu',
-                    hint: 'Nhập mật khẩu',
+                    hint: 'Mặc định là 123',
                     prefixIcon: Icons.lock_outline,
                     isPassword: true,
                     controller: _passwordController,
@@ -95,11 +100,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _login,
                   ),
                   const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, AppRoutes.register);
-                    },
-                    child: const Text('Chưa có tài khoản? Đăng ký ngay'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () { Navigator.pushNamed(context, AppRoutes.forgotPassword); },
+                        child: const Text("Quên mật khẩu?"),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, AppRoutes.register);
+                        },
+                        child: const Text('Đăng ký Sinh viên'),
+                      ),
+                    ],
                   ),
                 ],
               ),
