@@ -445,6 +445,7 @@ class _TopicListScreenState extends State<TopicListScreen> {
           lastDate: DateTime.now().add(const Duration(days: 365)),
         );
         if (pickedDate != null) {
+          if (!context.mounted) return;
           final pickedTime = await showTimePicker(
             context: context,
             initialTime: TimeOfDay.fromDateTime(date),

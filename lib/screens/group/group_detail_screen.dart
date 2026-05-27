@@ -84,10 +84,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               ),
             
             if (isLocked)
-              const Center(
+              Center(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Text(
+                  child: const Text(
                     'Nhóm đã chốt đề tài. Các tính năng chỉnh sửa đã bị khoá.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
@@ -108,7 +108,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: color)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: color)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

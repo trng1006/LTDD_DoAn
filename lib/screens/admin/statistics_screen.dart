@@ -40,7 +40,7 @@ class StatisticsScreen extends StatelessWidget {
   Widget _statCard(String title, String value, Color color) {
     return Expanded(
       child: Card(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(

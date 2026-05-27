@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/group_model.dart';
+import '../core/services/api_service.dart';
 
 class GroupProvider with ChangeNotifier {
+  final ApiService _apiService = ApiService();
   List<GroupModel> _groups = [];
   bool _isLoading = false;
 
@@ -9,42 +11,22 @@ class GroupProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
 
   GroupProvider() {
-    _fetchMockGroups();
+    fetchGroups();
   }
 
-  void _fetchMockGroups() {
-    _groups = [
-      GroupModel(
-        id: 'g1',
-        name: 'Nhóm 01 - Flutter App',
-        description: 'Nhóm làm đề tài ứng dụng Flutter quản lý học tập',
-        maxMembers: 5,
-        memberIds: ['sv01', 's2', 's7'],
-        pendingMemberIds: ['s5', 's6'],
-        leaderId: 'sv01',
-        status: 'pending_approval',
-        topicId: 't1',
-      ),
-      GroupModel(
-        id: 'g2',
-        name: 'Nhóm 02 - AI Team',
-        description: 'Nhóm làm đề tài Chatbot AI',
-        maxMembers: 4,
-        memberIds: ['s3', 's4', 's8'],
-        pendingMemberIds: [],
-        leaderId: 's3',
-        status: 'approved',
-        topicId: 't2',
-        isLocked: true,
-      ),
-    ];
+  Future<void> fetchGroups() async {
+    _isLoading = true;
+    notifyListeners();
+    _groups = await _apiService.getGroups();
+    _isLoading = false;
     notifyListeners();
   }
 
   Future<void> createGroup(String name, String description, int maxMembers, String leaderId) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(seconds: 1));
+    
+    // In a real app, call API here
     final newGroup = GroupModel(
       id: 'g${DateTime.now().millisecondsSinceEpoch}',
       name: name,
@@ -53,48 +35,67 @@ class GroupProvider with ChangeNotifier {
       memberIds: [leaderId],
       pendingMemberIds: [],
       leaderId: leaderId,
-      status: 'creating',
     );
     _groups.add(newGroup);
+    
     _isLoading = false;
     notifyListeners();
   }
 
-  Future<void> requestToJoin(String groupId, String userId) async {
+  void requestToJoin(String groupId, String userId) {
     final index = _groups.indexWhere((g) => g.id == groupId);
     if (index != -1) {
-      if (!_groups[index].pendingMemberIds.contains(userId) && !_groups[index].memberIds.contains(userId)) {
-        _groups[index].pendingMemberIds.add(userId);
+      final group = _groups[index];
+      if (!group.pendingMemberIds.contains(userId) && !group.memberIds.contains(userId)) {
+        _groups[index] = group.copyWith(
+          pendingMemberIds: [...group.pendingMemberIds, userId],
+        );
         notifyListeners();
       }
     }
   }
 
-  Future<void> acceptMember(String groupId, String userId) async {
+  void acceptMember(String groupId, String userId) {
     final index = _groups.indexWhere((g) => g.id == groupId);
     if (index != -1) {
-      _groups[index].pendingMemberIds.remove(userId);
-      if (_groups[index].memberIds.length < _groups[index].maxMembers) {
-        if (!_groups[index].memberIds.contains(userId)) {
-          _groups[index].memberIds.add(userId);
-        }
+      final group = _groups[index];
+      final newPending = group.pendingMemberIds.where((id) => id != userId).toList();
+      if (!group.memberIds.contains(userId)) {
+        _groups[index] = group.copyWith(
+          memberIds: [...group.memberIds, userId],
+          pendingMemberIds: newPending,
+        );
+        notifyListeners();
       }
+    }
+  }
+
+  void rejectMember(String groupId, String userId) {
+    final index = _groups.indexWhere((g) => g.id == groupId);
+    if (index != -1) {
+      final group = _groups[index];
+      _groups[index] = group.copyWith(
+        pendingMemberIds: group.pendingMemberIds.where((id) => id != userId).toList(),
+      );
       notifyListeners();
     }
   }
 
-  Future<void> removeMember(String groupId, String userId) async {
+  void removeMember(String groupId, String userId) {
     final index = _groups.indexWhere((g) => g.id == groupId);
     if (index != -1) {
-      _groups[index].memberIds.remove(userId);
+      final group = _groups[index];
+      _groups[index] = group.copyWith(
+        memberIds: group.memberIds.where((id) => id != userId).toList(),
+      );
       notifyListeners();
     }
   }
 
-  Future<void> rejectMember(String groupId, String userId) async {
+  void updateGroupSize(String groupId, int size) {
     final index = _groups.indexWhere((g) => g.id == groupId);
     if (index != -1) {
-      _groups[index].pendingMemberIds.remove(userId);
+      _groups[index] = _groups[index].copyWith(maxMembers: size);
       notifyListeners();
     }
   }
@@ -102,15 +103,18 @@ class GroupProvider with ChangeNotifier {
   void updateGroupStatus(String groupId, String status, {bool? isLocked}) {
     final index = _groups.indexWhere((g) => g.id == groupId);
     if (index != -1) {
-      _groups[index] = _groups[index].copyWith(status: status, isLocked: isLocked);
+      _groups[index] = _groups[index].copyWith(
+        status: status,
+        isLocked: isLocked,
+      );
       notifyListeners();
     }
   }
 
-  void updateGroupSize(String groupId, int newSize) {
-    final index = _groups.indexWhere((g) => g.id == groupId);
+  Future<void> updateGroup(GroupModel group) async {
+    final index = _groups.indexWhere((g) => g.id == group.id);
     if (index != -1) {
-      _groups[index] = _groups[index].copyWith(maxMembers: newSize);
+      _groups[index] = group;
       notifyListeners();
     }
   }

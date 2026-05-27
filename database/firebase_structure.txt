@@ -1,0 +1,45 @@
+FIRESTORE DATABASE STRUCTURE
+
+1. Collection: users (Document ID = Firebase Auth UID)
+   - id: String
+   - name: String
+   - email: String
+   - role: String ('student', 'lecturer', 'admin')
+   - identity: String (MSSV/MSGV)
+   - avatarUrl: String (optional)
+   - createdAt: Timestamp
+
+2. Collection: topics (Document ID = Auto-generated)
+   - id: String
+   - title: String
+   - description: String
+   - lecturerId: String (Reference to users.id)
+   - lecturerName: String (Denormalized for performance)
+   - maxGroups: Number
+   - currentGroups: Number
+   - startTime: Timestamp
+   - endTime: Timestamp
+   - status: String ('open', 'closed')
+   - createdAt: Timestamp
+
+3. Collection: groups (Document ID = Auto-generated)
+   - id: String
+   - name: String
+   - description: String
+   - leaderId: String (Reference to users.id)
+   - memberIds: Array<String> (References to users.id)
+   - pendingMemberIds: Array<String>
+   - maxMembers: Number
+   - topicId: String (optional, Reference to topics.id)
+   - status: String ('pending_approval', 'approved', 'rejected')
+   - isLocked: Boolean
+   - createdAt: Timestamp
+
+4. Collection: notifications (Document ID = Auto-generated)
+   - id: String
+   - receiverId: String (Reference to users.id)
+   - title: String
+   - content: String
+   - type: String ('request', 'approval', 'system')
+   - isRead: Boolean
+   - timestamp: Timestamp
