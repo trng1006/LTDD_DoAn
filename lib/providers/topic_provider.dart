@@ -25,8 +25,10 @@ class TopicProvider with ChangeNotifier {
   Future<void> addTopic(TopicModel topic) async {
     _isLoading = true;
     notifyListeners();
-    // Logic cho API sẽ được thêm sau
-    _topics.add(topic);
+    bool success = await _apiService.createTopic(topic);
+    if (success) {
+      await fetchTopics(); // Reload from server to get correct ID and data
+    }
     _isLoading = false;
     notifyListeners();
   }
@@ -34,16 +36,22 @@ class TopicProvider with ChangeNotifier {
   Future<void> updateTopic(TopicModel topic) async {
     _isLoading = true;
     notifyListeners();
-    final index = _topics.indexWhere((t) => t.id == topic.id);
-    if (index != -1) {
-      _topics[index] = topic;
+    bool success = await _apiService.updateTopic(topic);
+    if (success) {
+      await fetchTopics();
     }
     _isLoading = false;
     notifyListeners();
   }
   
   Future<void> deleteTopic(String id) async {
-    _topics.removeWhere((t) => t.id == id);
+    _isLoading = true;
+    notifyListeners();
+    bool success = await _apiService.deleteTopic(id);
+    if (success) {
+      _topics.removeWhere((t) => t.id == id);
+    }
+    _isLoading = false;
     notifyListeners();
   }
 }

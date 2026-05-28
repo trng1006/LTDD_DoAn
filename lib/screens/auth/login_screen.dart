@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   CustomTextField(
                     label: 'Mật khẩu',
-                    hint: 'Mặc định là 123',
+                    hint: 'Mặc định là 123456',
                     prefixIcon: Icons.lock_outline,
                     isPassword: true,
                     controller: _passwordController,

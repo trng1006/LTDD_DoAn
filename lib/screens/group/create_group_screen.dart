@@ -33,6 +33,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         _descController.text.trim(),
         _maxMembers,
         userId,
+        null, // topicId is null when creating a new group
       );
       
       if (mounted) {

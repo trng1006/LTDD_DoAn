@@ -22,100 +22,83 @@ class GroupProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createGroup(String name, String description, int maxMembers, String leaderId) async {
+  Future<void> createGroup(String name, String description, int maxMembers, String leaderId, String? topicId) async {
     _isLoading = true;
     notifyListeners();
     
-    // In a real app, call API here
     final newGroup = GroupModel(
-      id: 'g${DateTime.now().millisecondsSinceEpoch}',
+      id: '', // Will be assigned by backend
       name: name,
       description: description,
       maxMembers: maxMembers,
       memberIds: [leaderId],
       pendingMemberIds: [],
       leaderId: leaderId,
+      topicId: topicId,
     );
-    _groups.add(newGroup);
+    
+    bool success = await _apiService.createGroup(newGroup);
+    if (success) {
+      await fetchGroups();
+    }
     
     _isLoading = false;
     notifyListeners();
   }
 
-  void requestToJoin(String groupId, String userId) {
-    final index = _groups.indexWhere((g) => g.id == groupId);
-    if (index != -1) {
-      final group = _groups[index];
-      if (!group.pendingMemberIds.contains(userId) && !group.memberIds.contains(userId)) {
-        _groups[index] = group.copyWith(
-          pendingMemberIds: [...group.pendingMemberIds, userId],
-        );
-        notifyListeners();
-      }
+  Future<void> requestToJoin(String groupId, String userId) async {
+    bool success = await _apiService.joinGroup(groupId, userId);
+    if (success) {
+      await fetchGroups();
     }
   }
 
-  void acceptMember(String groupId, String userId) {
-    final index = _groups.indexWhere((g) => g.id == groupId);
-    if (index != -1) {
-      final group = _groups[index];
-      final newPending = group.pendingMemberIds.where((id) => id != userId).toList();
-      if (!group.memberIds.contains(userId)) {
-        _groups[index] = group.copyWith(
-          memberIds: [...group.memberIds, userId],
-          pendingMemberIds: newPending,
-        );
-        notifyListeners();
-      }
+  Future<void> acceptMember(String groupId, String userId) async {
+    bool success = await _apiService.approveMember(groupId, userId);
+    if (success) {
+      await fetchGroups();
     }
   }
 
-  void rejectMember(String groupId, String userId) {
-    final index = _groups.indexWhere((g) => g.id == groupId);
-    if (index != -1) {
-      final group = _groups[index];
-      _groups[index] = group.copyWith(
-        pendingMemberIds: group.pendingMemberIds.where((id) => id != userId).toList(),
-      );
-      notifyListeners();
+  Future<void> rejectMember(String groupId, String userId) async {
+    // In our backend, rejecting a join request is same as removing the pending member
+    bool success = await _apiService.removeMember(groupId, userId);
+    if (success) {
+      await fetchGroups();
     }
   }
 
-  void removeMember(String groupId, String userId) {
-    final index = _groups.indexWhere((g) => g.id == groupId);
-    if (index != -1) {
-      final group = _groups[index];
-      _groups[index] = group.copyWith(
-        memberIds: group.memberIds.where((id) => id != userId).toList(),
-      );
-      notifyListeners();
+  Future<void> removeMember(String groupId, String userId) async {
+    bool success = await _apiService.removeMember(groupId, userId);
+    if (success) {
+      await fetchGroups();
     }
   }
 
-  void updateGroupSize(String groupId, int size) {
-    final index = _groups.indexWhere((g) => g.id == groupId);
-    if (index != -1) {
-      _groups[index] = _groups[index].copyWith(maxMembers: size);
-      notifyListeners();
+  Future<void> updateGroupStatus(String groupId, String status, {bool? isLocked}) async {
+    final group = _groups.firstWhere((g) => g.id == groupId);
+    final updatedGroup = group.copyWith(status: status, isLocked: isLocked);
+    
+    bool success = await _apiService.updateGroup(updatedGroup);
+    if (success) {
+      await fetchGroups();
     }
   }
 
-  void updateGroupStatus(String groupId, String status, {bool? isLocked}) {
-    final index = _groups.indexWhere((g) => g.id == groupId);
-    if (index != -1) {
-      _groups[index] = _groups[index].copyWith(
-        status: status,
-        isLocked: isLocked,
-      );
-      notifyListeners();
+  Future<void> updateGroupSize(String groupId, int size) async {
+    final group = _groups.firstWhere((g) => g.id == groupId);
+    final updatedGroup = group.copyWith(maxMembers: size);
+    
+    bool success = await _apiService.updateGroup(updatedGroup);
+    if (success) {
+      await fetchGroups();
     }
   }
 
   Future<void> updateGroup(GroupModel group) async {
-    final index = _groups.indexWhere((g) => g.id == group.id);
-    if (index != -1) {
-      _groups[index] = group;
-      notifyListeners();
+    bool success = await _apiService.updateGroup(group);
+    if (success) {
+      await fetchGroups();
     }
   }
 }
