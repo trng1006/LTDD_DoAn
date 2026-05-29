@@ -6,6 +6,10 @@ import 'package:ungdungdangkinhomvachondetai/providers/topic_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/routes/app_pages.dart';
 import 'package:ungdungdangkinhomvachondetai/core/theme/app_theme.dart';
 
+import 'package:ungdungdangkinhomvachondetai/providers/course_provider.dart';
+
+import 'package:ungdungdangkinhomvachondetai/providers/user_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -15,6 +19,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GroupProvider()),
         ChangeNotifierProvider(create: (_) => TopicProvider()),
+        ChangeNotifierProvider(create: (_) => CourseProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: const MyApp(),
     ),

@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/auth_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/core/constants/app_routes.dart';
-import 'package:ungdungdangkinhomvachondetai/models/group_model.dart';
+import '../../providers/course_provider.dart';
+import '../../models/group_model.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,6 +13,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final groupProvider = context.watch<GroupProvider>();
+    final courseProvider = context.watch<CourseProvider>();
     final user = authProvider.user;
     if (user == null) return const Scaffold();
 
@@ -19,12 +21,10 @@ class HomeScreen extends StatelessWidget {
     final bool isLecturer = user.role == 'lecturer';
     final bool isAdmin = user.role == 'admin';
     
-    final myGroup = groupProvider.groups.firstWhere(
-      (g) => g.memberIds.contains(user.id), 
-      orElse: () => GroupModel(id: '', name: '', description: '', maxMembers: 0, memberIds: [], pendingMemberIds: [], leaderId: '')
-    );
-    final bool hasGroup = myGroup.id.isNotEmpty;
-    final bool isLeader = myGroup.leaderId == user.id;
+    final List<GroupModel> myGroups = groupProvider.groups.where(
+      (g) => g.memberIds.contains(user.id)
+    ).toList();
+    final bool hasGroup = myGroups.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -46,7 +46,13 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(context, user),
+            _buildHeader(
+              context, 
+              user, 
+              semesterName: user.currentSemesterId != null 
+                ? courseProvider.getSemesterById(user.currentSemesterId!)?.name 
+                : null
+            ),
             const SizedBox(height: 32),
             
             if (isStudent || isLecturer) ...[
@@ -61,41 +67,53 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 16),
             
             if (isStudent) ...[
-              if (!hasGroup) ...[
-                _buildActionCard(
-                  context,
-                  'Tạo nhóm mới',
-                  'Đăng ký làm Trưởng nhóm cho môn học',
-                  Icons.group_add_rounded,
-                  Colors.blue,
-                  () => Navigator.pushNamed(context, AppRoutes.manageGroup),
-                ),
-                const SizedBox(height: 16),
+              _buildActionCard(
+                context,
+                'Tạo nhóm mới',
+                'Đăng ký làm Trưởng nhóm cho môn học',
+                Icons.group_add_rounded,
+                Colors.blue,
+                () => Navigator.pushNamed(context, AppRoutes.manageGroup),
+              ),
+              const SizedBox(height: 16),
+              
+              if (hasGroup) ...[
                 Text(
-                  'Hoặc gia nhập nhóm sẵn có',
+                  'Nhóm của tôi',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                ...myGroups.map((group) {
+                  final bool isLeader = group.leaderId == user.id;
+                  return _buildActionCard(
+                    context,
+                    group.name,
+                    'Quản lý thành viên (${group.memberIds.length} TV)${isLeader ? ' - Trưởng nhóm' : ''}',
+                    Icons.groups_rounded,
+                    Colors.indigo,
+                    () => Navigator.pushNamed(context, AppRoutes.manageGroup), // Should probably pass group to detail screen
+                  );
+                }),
+                const SizedBox(height: 16),
+              ],
+
+              if (!hasGroup) ...[
+                Text(
+                  'Gia nhập nhóm sẵn có',
                   style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 _buildAvailableGroups(context, groupProvider, user.id),
-              ] else ...[
-                _buildActionCard(
-                  context,
-                  'Nhóm của tôi',
-                  'Quản lý thành viên (${myGroup.memberIds.length} TV)',
-                  Icons.groups_rounded,
-                  Colors.indigo,
-                  () => Navigator.pushNamed(context, AppRoutes.manageGroup),
-                ),
-                if (isLeader)
-                  _buildActionCard(
-                    context,
-                    'Đăng ký đề tài',
-                    'Chọn đề tài từ danh sách giảng viên',
-                    Icons.assignment_rounded,
-                    Colors.orange,
-                    () => Navigator.pushNamed(context, AppRoutes.topicList),
-                  ),
               ],
+
+              _buildActionCard(
+                context,
+                'Danh sách đề tài',
+                'Xem các đề tài theo môn học',
+                Icons.assignment_rounded,
+                Colors.orange,
+                () => Navigator.pushNamed(context, AppRoutes.topicList),
+              ),
             ],
             
             if (isLecturer) ...[
@@ -213,7 +231,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, dynamic user) {
+  Widget _buildHeader(BuildContext context, dynamic user, {String? semesterName}) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -237,11 +255,24 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Text('Chào mừng,', style: Theme.of(context).textTheme.bodyMedium),
                 Text(user.name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, borderRadius: BorderRadius.circular(10)),
-                  child: Text(user.role.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                Text('@${user.username}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, borderRadius: BorderRadius.circular(10)),
+                      child: Text(user.role.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                    if (semesterName != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.orange.shade800, borderRadius: BorderRadius.circular(10)),
+                        child: Text(semesterName.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                  ],
                 ),
               ],
             ),

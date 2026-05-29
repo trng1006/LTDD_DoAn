@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Body
 from typing import List, Optional
 from pydantic import BaseModel
+import json
 from database import get_db_connection
 import mysql.connector
 
@@ -10,19 +11,24 @@ app = FastAPI(title="Hệ thống Đăng ký Đề tài API")
 
 class UserBase(BaseModel):
     id: str
+    username: Optional[str] = None # Added username field
     name: str
     email: str
     role: str
     identity: Optional[str] = None
     password: Optional[str] = None
+    enrolledCourseIds: Optional[List[str]] = []
+    taughtCourseIds: Optional[List[str]] = []
+    currentSemesterId: Optional[str] = None
 
 class TopicBase(BaseModel):
-    id: Optional[str] = None # String ID for Flutter
+    id: Optional[str] = None
     title: str
     description: Optional[str] = ""
-    lecturerId: str # lecturer_id in DB
-    maxGroups: int = 1 # max_groups in DB
-    currentGroups: int = 0 # current_groups in DB
+    lecturerId: str
+    courseId: str
+    maxGroups: int = 1
+    currentGroups: int = 0
     startTime: Optional[str] = None
     endTime: Optional[str] = None
 
@@ -30,11 +36,12 @@ class GroupBase(BaseModel):
     id: Optional[str] = None
     name: str
     description: Optional[str] = ""
-    leaderId: str # leader_id in DB
-    maxMembers: int = 5 # max_members in DB
-    topicId: Optional[str] = None # topic_id in DB
-    status: str = "pending_approval"
-    isLocked: bool = False # is_locked in DB
+    leaderId: str
+    courseId: str
+    maxMembers: int = 5
+    topicId: Optional[str] = None
+    status: str = "creating"
+    isLocked: bool = False
 
 class LoginRequest(BaseModel):
     identity: str
@@ -42,12 +49,31 @@ class LoginRequest(BaseModel):
 
 # --- Helper Mappings ---
 
+def map_user(row, course_ids=None):
+    user_data = {
+        "id": row["id"],
+        "username": row.get("username") or row["id"],
+        "name": row["name"],
+        "email": row["email"],
+        "role": row["role"],
+        "identity": row["identity"],
+        "currentSemesterId": row["current_semester_id"]
+    }
+    
+    if row["role"] == 'student':
+        user_data["enrolledCourseIds"] = course_ids if course_ids is not None else []
+    elif row["role"] == 'lecturer':
+        user_data["taughtCourseIds"] = course_ids if course_ids is not None else []
+        
+    return user_data
+
 def map_topic(row):
     return {
         "id": str(row["id"]),
         "title": row["title"],
         "description": row["description"] or "",
         "lecturerId": row["lecturer_id"],
+        "courseId": row["course_id"],
         "maxGroups": row["max_groups"],
         "currentGroups": row["current_groups"],
         "startTime": row["start_time"].isoformat() if row["start_time"] else None,
@@ -60,6 +86,7 @@ def map_group(row):
         "name": row["name"],
         "description": row["description"] or "",
         "leaderId": row["leader_id"],
+        "courseId": row["course_id"],
         "maxMembers": row["max_members"],
         "topicId": str(row["topic_id"]) if row["topic_id"] else None,
         "status": row["status"],
@@ -80,45 +107,91 @@ def login(req: LoginRequest):
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = conn.cursor(dictionary=True)
-        query = "SELECT id, name, email, role, identity FROM users WHERE (id = %s OR email = %s OR identity = %s) AND password = %s"
-        cursor.execute(query, (req.identity, req.identity, req.identity, req.password))
+        query = "SELECT id, username, name, email, role, identity, current_semester_id FROM users WHERE (id = %s OR email = %s OR identity = %s OR username = %s) AND password = %s"
+        cursor.execute(query, (req.identity, req.identity, req.identity, req.identity, req.password))
         user = cursor.fetchone()
+        
+        if user:
+            course_ids = []
+            if user['role'] == 'student':
+                cursor.execute("SELECT course_id FROM student_courses WHERE user_id = %s", (user['id'],))
+            elif user['role'] == 'lecturer':
+                cursor.execute("SELECT course_id FROM lecturer_courses WHERE user_id = %s", (user['id'],))
+            
+            if user['role'] in ['student', 'lecturer']:
+                course_ids = [c['course_id'] for c in cursor.fetchall()]
+            
+            cursor.close()
+            conn.close()
+            print(f"DEBUG: Login successful for user: {user['name']}")
+            return map_user(user, course_ids)
+            
         cursor.close()
         conn.close()
-        if user:
-            print(f"DEBUG: Login successful for user: {user['name']}")
-            return user
         raise HTTPException(status_code=401, detail="Invalid credentials")
     except Exception as e:
+        print(f"DEBUG: Login Error: {str(e)}")
         if conn and conn.is_connected(): conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/users", response_model=List[UserBase])
+@app.get("/users")
 def get_users(role: Optional[str] = None):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     if role:
-        cursor.execute("SELECT id, name, email, role, identity FROM users WHERE role = %s", (role,))
+        cursor.execute("SELECT id, username, name, email, role, identity, current_semester_id FROM users WHERE role = %s", (role,))
     else:
-        cursor.execute("SELECT id, name, email, role, identity FROM users")
+        cursor.execute("SELECT id, username, name, email, role, identity, current_semester_id FROM users")
     users = cursor.fetchall()
+    
+    mapped_users = []
+    for u in users:
+        course_ids = []
+        if u['role'] == 'student':
+            cursor.execute("SELECT course_id FROM student_courses WHERE user_id = %s", (u['id'],))
+            course_ids = [c['course_id'] for c in cursor.fetchall()]
+        elif u['role'] == 'lecturer':
+            cursor.execute("SELECT course_id FROM lecturer_courses WHERE user_id = %s", (u['id'],))
+            course_ids = [c['course_id'] for c in cursor.fetchall()]
+        mapped_users.append(map_user(u, course_ids))
+        
     cursor.close()
     conn.close()
-    return users
+    return mapped_users
 
 @app.post("/users", response_model=UserBase)
 def create_user(user: UserBase):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        query = "INSERT INTO users (id, name, email, password, role, identity) VALUES (%s, %s, %s, %s, %s, %s)"
-        cursor.execute(query, (user.id, user.name, user.email, user.password or '123', user.role, user.identity))
+        conn.start_transaction()
+        # 1. Thêm user vào bảng users
+        query = "INSERT INTO users (id, username, name, email, password, role, identity, current_semester_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        cursor.execute(query, (user.id, user.username or user.id, user.name, user.email, user.password or '123', user.role, user.identity, user.currentSemesterId))
+
+        
+        if user.role == 'student' and user.enrolledCourseIds:
+            for c_id in user.enrolledCourseIds:
+                cursor.execute("INSERT INTO student_courses (user_id, course_id) VALUES (%s, %s)", (user.id, c_id))
+        elif user.role == 'lecturer' and user.taughtCourseIds:
+            for c_id in user.taughtCourseIds:
+                cursor.execute("INSERT INTO lecturer_courses (user_id, course_id) VALUES (%s, %s)", (user.id, c_id))
+        
         conn.commit()
         cursor.close()
         conn.close()
         return user
     except mysql.connector.Error as err:
-        if conn and conn.is_connected(): conn.close()
+        if conn and conn.is_connected(): conn.rollback(); conn.close()
+        # Xử lý lỗi trùng lặp (Duplicate Entry)
+        if err.errno == 1062:
+            msg = str(err.msg)
+            if "username" in msg:
+                raise HTTPException(status_code=400, detail="Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.")
+            if "email" in msg:
+                raise HTTPException(status_code=400, detail="Email này đã được sử dụng.")
+            if "identity" in msg:
+                raise HTTPException(status_code=400, detail="Mã số (MSSV/MSGV) đã tồn tại.")
         raise HTTPException(status_code=400, detail=str(err))
 
 @app.put("/users/{user_id}", response_model=UserBase)
@@ -126,14 +199,38 @@ def update_user(user_id: str, user: UserBase):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        query = "UPDATE users SET name=%s, email=%s, role=%s, identity=%s WHERE id=%s"
-        cursor.execute(query, (user.name, user.email, user.role, user.identity, user_id))
+        conn.start_transaction()
+        # 1. Cập nhật thông tin cơ bản
+        query = "UPDATE users SET username=%s, name=%s, email=%s, role=%s, identity=%s, current_semester_id=%s WHERE id=%s"
+        cursor.execute(query, (user.username or user.id, user.name, user.email, user.role, user.identity, user.currentSemesterId, user_id))
+
+        
+        if user.role == 'student':
+            cursor.execute("DELETE FROM student_courses WHERE user_id = %s", (user_id,))
+            if user.enrolledCourseIds:
+                for c_id in user.enrolledCourseIds:
+                    cursor.execute("INSERT INTO student_courses (user_id, course_id) VALUES (%s, %s)", (user_id, c_id))
+        elif user.role == 'lecturer':
+            cursor.execute("DELETE FROM lecturer_courses WHERE user_id = %s", (user_id,))
+            if user.taughtCourseIds:
+                for c_id in user.taughtCourseIds:
+                    cursor.execute("INSERT INTO lecturer_courses (user_id, course_id) VALUES (%s, %s)", (user_id, c_id))
+        
         conn.commit()
         cursor.close()
         conn.close()
         return user
     except Exception as e:
-        if conn and conn.is_connected(): conn.close()
+        if conn and conn.is_connected(): conn.rollback(); conn.close()
+        # Xử lý lỗi trùng lặp (Duplicate Entry) cho MySQL Connector
+        if hasattr(e, 'errno') and e.errno == 1062:
+            msg = str(e.msg) if hasattr(e, 'msg') else str(e)
+            if "username" in msg:
+                raise HTTPException(status_code=400, detail="Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.")
+            if "email" in msg:
+                raise HTTPException(status_code=400, detail="Email này đã được sử dụng.")
+            if "identity" in msg:
+                raise HTTPException(status_code=400, detail="Mã số (MSSV/MSGV) đã tồn tại.")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.delete("/users/{user_id}")
@@ -149,6 +246,23 @@ def delete_user(user_id: str):
     except Exception as e:
         if conn and conn.is_connected(): conn.close()
         raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/semesters")
+def get_semesters():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM semesters")
+    rows = cursor.fetchall()
+    semesters = []
+    for r in rows:
+        semesters.append({
+            "id": r["id"],
+            "name": r["name"],
+            "isActive": bool(r["is_active"])
+        })
+    cursor.close()
+    conn.close()
+    return semesters
 
 # --- Topic Routes ---
 
@@ -172,9 +286,9 @@ def create_topic(topic: TopicBase):
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = conn.cursor()
-        query = "INSERT INTO topics (title, description, lecturer_id, max_groups) VALUES (%s, %s, %s, %s)"
-        print(f"DEBUG: Executing query: {query} with values: {(topic.title, topic.description, topic.lecturerId, topic.maxGroups)}")
-        cursor.execute(query, (topic.title, topic.description, topic.lecturerId, topic.maxGroups))
+        query = "INSERT INTO topics (title, description, lecturer_id, course_id, max_groups) VALUES (%s, %s, %s, %s, %s)"
+        print(f"DEBUG: Executing query: {query} with values: {(topic.title, topic.description, topic.lecturerId, topic.courseId, topic.maxGroups)}")
+        cursor.execute(query, (topic.title, topic.description, topic.lecturerId, topic.courseId, topic.maxGroups))
         conn.commit()
         topic_id = cursor.lastrowid
         print(f"DEBUG: Topic created successfully with ID: {topic_id}")
@@ -193,8 +307,8 @@ def update_topic(topic_id: int, topic: TopicBase):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        query = "UPDATE topics SET title=%s, description=%s, lecturer_id=%s, max_groups=%s WHERE id=%s"
-        cursor.execute(query, (topic.title, topic.description, topic.lecturerId, topic.maxGroups, topic_id))
+        query = "UPDATE topics SET title=%s, description=%s, lecturer_id=%s, course_id=%s, max_groups=%s WHERE id=%s"
+        cursor.execute(query, (topic.title, topic.description, topic.lecturerId, topic.courseId, topic.maxGroups, topic_id))
         conn.commit()
         cursor.close()
         conn.close()
@@ -246,8 +360,8 @@ def create_group(group: GroupBase):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        query = "INSERT INTO `groups` (name, description, leader_id, max_members, topic_id) VALUES (%s, %s, %s, %s, %s)"
-        cursor.execute(query, (group.name, group.description, group.leaderId, group.maxMembers, group.topicId))
+        query = "INSERT INTO `groups` (name, description, leader_id, course_id, max_members, topic_id) VALUES (%s, %s, %s, %s, %s, %s)"
+        cursor.execute(query, (group.name, group.description, group.leaderId, group.courseId, group.maxMembers, group.topicId))
         group_id = cursor.lastrowid
         cursor.execute("INSERT INTO group_members (group_id, user_id, status) VALUES (%s, %s, 'member')", (group_id, group.leaderId))
         conn.commit()
@@ -256,6 +370,15 @@ def create_group(group: GroupBase):
         return {"id": str(group_id), "message": "Group created successfully"}
     except Exception as e:
         if conn and conn.is_connected(): conn.rollback(); conn.close()
+        # Xử lý lỗi trùng lặp (Duplicate Entry) cho MySQL Connector
+        if hasattr(e, 'errno') and e.errno == 1062:
+            msg = str(e.msg) if hasattr(e, 'msg') else str(e)
+            if "username" in msg:
+                raise HTTPException(status_code=400, detail="Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.")
+            if "email" in msg:
+                raise HTTPException(status_code=400, detail="Email này đã được sử dụng.")
+            if "identity" in msg:
+                raise HTTPException(status_code=400, detail="Mã số (MSSV/MSGV) đã tồn tại.")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.put("/groups/{group_id}")
@@ -263,8 +386,8 @@ def update_group(group_id: int, group: GroupBase):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        query = "UPDATE `groups` SET name=%s, description=%s, max_members=%s, topic_id=%s, status=%s, is_locked=%s WHERE id=%s"
-        cursor.execute(query, (group.name, group.description, group.maxMembers, group.topicId, group.status, group.isLocked, group_id))
+        query = "UPDATE `groups` SET name=%s, description=%s, leader_id=%s, course_id=%s, max_members=%s, topic_id=%s, status=%s, is_locked=%s WHERE id=%s"
+        cursor.execute(query, (group.name, group.description, group.leaderId, group.courseId, group.maxMembers, group.topicId, group.status, group.isLocked, group_id))
         conn.commit()
         cursor.close()
         conn.close()

@@ -4,6 +4,7 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_textfield.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/course_provider.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -17,6 +18,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   int _maxMembers = 5;
+  String? _selectedCourseId;
 
   @override
   void dispose() {
@@ -27,10 +29,15 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   void _createGroup() async {
     if (_formKey.currentState!.validate()) {
+      if (_selectedCourseId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn môn học')));
+        return;
+      }
       final userId = context.read<AuthProvider>().user?.id ?? '';
       await context.read<GroupProvider>().createGroup(
         _nameController.text.trim(),
         _descController.text.trim(),
+        _selectedCourseId!,
         _maxMembers,
         userId,
         null, // topicId is null when creating a new group
@@ -46,6 +53,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = context.watch<GroupProvider>().isLoading;
+    final user = context.watch<AuthProvider>().user;
+    final courses = context.watch<CourseProvider>().courses;
+    
+    // Only show courses the student is enrolled in
+    final enrolledCourses = courses.where((c) => user?.enrolledCourseIds.contains(c.id) ?? false).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tạo nhóm mới')),
@@ -56,6 +68,25 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: _selectedCourseId,
+                decoration: const InputDecoration(
+                  labelText: 'Môn học',
+                  border: OutlineInputBorder(),
+                ),
+                items: enrolledCourses.map((c) => DropdownMenuItem(
+                  value: c.id,
+                  child: Text(c.name),
+                )).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCourseId = value;
+                  });
+                },
+                validator: (value) => value == null ? 'Vui lòng chọn môn học' : null,
+              ),
+              const SizedBox(height: 16),
               CustomTextField(
                 label: 'Tên nhóm',
                 hint: 'Ví dụ: Nhóm 01 - Trí tuệ nhân tạo',

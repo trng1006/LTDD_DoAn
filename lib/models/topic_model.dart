@@ -3,6 +3,7 @@ class TopicModel {
   final String title;
   final String description;
   final String lecturerId;
+  final String courseId; // Added to associate topic with a course
   final int maxGroups;
   final int currentGroups;
   final DateTime startTime; // Added for scheduling
@@ -13,6 +14,7 @@ class TopicModel {
     required this.title,
     required this.description,
     required this.lecturerId,
+    required this.courseId,
     required this.maxGroups,
     this.currentGroups = 0,
     required this.startTime,
@@ -25,6 +27,7 @@ class TopicModel {
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       lecturerId: json['lecturerId'] ?? '',
+      courseId: json['courseId'] ?? '',
       maxGroups: json['maxGroups'] ?? 1,
       currentGroups: json['currentGroups'] ?? 0,
       startTime: json['startTime'] != null ? DateTime.parse(json['startTime']) : DateTime.now(),
@@ -38,6 +41,7 @@ class TopicModel {
       'title': title,
       'description': description,
       'lecturerId': lecturerId,
+      'courseId': courseId,
       'maxGroups': maxGroups,
       'currentGroups': currentGroups,
       'startTime': startTime.toIso8601String(),
@@ -52,12 +56,14 @@ class TopicModel {
     int? currentGroups,
     DateTime? startTime,
     DateTime? endTime,
+    String? courseId,
   }) {
     return TopicModel(
       id: id,
       title: title ?? this.title,
       description: description ?? this.description,
       lecturerId: lecturerId,
+      courseId: courseId ?? this.courseId,
       maxGroups: maxGroups ?? this.maxGroups,
       currentGroups: currentGroups ?? this.currentGroups,
       startTime: startTime ?? this.startTime,

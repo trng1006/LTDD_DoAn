@@ -2,6 +2,7 @@ class GroupModel {
   final String id;
   final String name;
   final String description;
+  final String courseId; // Added to associate group with a course
   final int maxMembers;
   final List<String> memberIds;
   final List<String> pendingMemberIds; // Added for flowchart step 5
@@ -14,6 +15,7 @@ class GroupModel {
     required this.id,
     required this.name,
     required this.description,
+    required this.courseId,
     required this.maxMembers,
     required this.memberIds,
     required this.pendingMemberIds,
@@ -28,6 +30,7 @@ class GroupModel {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
+      courseId: json['courseId'] ?? '',
       maxMembers: json['maxMembers'] ?? 5,
       memberIds: List<String>.from(json['memberIds'] ?? []),
       pendingMemberIds: List<String>.from(json['pendingMemberIds'] ?? []),
@@ -43,6 +46,7 @@ class GroupModel {
       'id': id,
       'name': name,
       'description': description,
+      'courseId': courseId,
       'maxMembers': maxMembers,
       'memberIds': memberIds,
       'pendingMemberIds': pendingMemberIds,
@@ -56,6 +60,7 @@ class GroupModel {
   GroupModel copyWith({
     String? name,
     String? description,
+    String? courseId,
     int? maxMembers,
     List<String>? memberIds,
     List<String>? pendingMemberIds,
@@ -67,6 +72,7 @@ class GroupModel {
       id: id,
       name: name ?? this.name,
       description: description ?? this.description,
+      courseId: courseId ?? this.courseId,
       maxMembers: maxMembers ?? this.maxMembers,
       memberIds: memberIds ?? this.memberIds,
       pendingMemberIds: pendingMemberIds ?? this.pendingMemberIds,

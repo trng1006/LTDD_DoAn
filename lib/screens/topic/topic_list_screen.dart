@@ -6,7 +6,10 @@ import '../../providers/auth_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../models/topic_model.dart';
 import '../../models/group_model.dart';
+import '../../models/user_model.dart';
+import '../../models/course_model.dart';
 import '../group/group_detail_screen.dart';
+import '../../providers/course_provider.dart';
 
 class TopicListScreen extends StatefulWidget {
   const TopicListScreen({super.key});
@@ -18,21 +21,42 @@ class TopicListScreen extends StatefulWidget {
 class _TopicListScreenState extends State<TopicListScreen> {
   String _searchQuery = '';
   String _sortBy = 'Tiêu đề';
+  String? _selectedCourseId;
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
   @override
   Widget build(BuildContext context) {
     final topicProvider = context.watch<TopicProvider>();
-    final user = context.read<AuthProvider>().user;
+    final authProvider = context.watch<AuthProvider>();
+    final courseProvider = context.watch<CourseProvider>();
+    final user = authProvider.user;
     
     final bool isLecturer = user?.role == 'lecturer';
     final bool isAdmin = user?.role == 'admin';
+    final bool isStudent = user?.role == 'student';
 
     List<TopicModel> displayTopics = topicProvider.topics.where((t) {
       final matchesSearch = t.title.toLowerCase().contains(_searchQuery.toLowerCase()) || 
                           t.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      if (isLecturer) return matchesSearch && t.lecturerId == user?.id;
-      return matchesSearch;
+      
+      bool matchesCourse = true;
+      if (_selectedCourseId != null && _selectedCourseId != 'all') {
+        matchesCourse = t.courseId == _selectedCourseId;
+      } else {
+        if (isStudent && user != null) {
+          matchesCourse = user.enrolledCourseIds.contains(t.courseId);
+        } else if (isLecturer && user != null) {
+          // Lecturer sees topics for courses they teach OR topics they created
+          matchesCourse = user.taughtCourseIds.contains(t.courseId) || t.lecturerId == user.id;
+        }
+      }
+
+      if (isLecturer && user != null) {
+        // Double check: if they filter by a specific course, they still only see their stuff or their course's stuff
+        return matchesSearch && matchesCourse;
+      }
+      
+      return matchesSearch && matchesCourse;
     }).toList();
 
     if (_sortBy == 'Số lượng nhóm') {
@@ -54,7 +78,7 @@ class _TopicListScreenState extends State<TopicListScreen> {
       ),
       body: Column(
         children: [
-          _buildSearchAndFilter(),
+          _buildSearchAndFilter(courseProvider, user),
           Expanded(
             child: topicProvider.isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -74,7 +98,16 @@ class _TopicListScreenState extends State<TopicListScreen> {
     );
   }
 
-  Widget _buildSearchAndFilter() {
+  Widget _buildSearchAndFilter(CourseProvider courseProvider, UserModel? user) {
+    final courses = courseProvider.courses;
+    
+    List<CourseModel> relevantCourses;
+    if (user != null && user.role == 'student') {
+      relevantCourses = courses.where((c) => user.enrolledCourseIds.contains(c.id)).toList();
+    } else {
+      relevantCourses = courses;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       color: Theme.of(context).colorScheme.surface,
@@ -92,18 +125,31 @@ class _TopicListScreenState extends State<TopicListScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Text('Sắp xếp theo: '),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Tiêu đề'),
-                selected: _sortBy == 'Tiêu đề',
-                onSelected: (val) => setState(() => _sortBy = 'Tiêu đề'),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true, // Prevent horizontal overflow
+                  initialValue: _selectedCourseId ?? 'all',
+                  decoration: const InputDecoration(
+                    labelText: 'Môn học',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('Tất cả môn học')),
+                    ...relevantCourses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                  ],
+                  onChanged: (val) => setState(() => _selectedCourseId = val),
+                ),
               ),
               const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Số lượng nhóm'),
-                selected: _sortBy == 'Số lượng nhóm',
-                onSelected: (val) => setState(() => _sortBy = 'Số lượng nhóm'),
+              PopupMenuButton<String>(
+                initialValue: _sortBy,
+                icon: const Icon(Icons.sort),
+                onSelected: (val) => setState(() => _sortBy = val),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'Tiêu đề', child: Text('Sắp xếp theo Tiêu đề')),
+                  const PopupMenuItem(value: 'Số lượng nhóm', child: Text('Sắp xếp theo Số lượng nhóm')),
+                ],
               ),
             ],
           ),
@@ -230,8 +276,8 @@ class _TopicListScreenState extends State<TopicListScreen> {
     final bool isOpen = isStarted && !isEnded;
 
     final myGroup = groupProvider.groups.firstWhere(
-      (g) => g.leaderId == user?.id, 
-      orElse: () => GroupModel(id: '', name: '', description: '', maxMembers: 0, memberIds: [], pendingMemberIds: [], leaderId: '')
+      (g) => g.leaderId == user?.id && g.courseId == topic.courseId, 
+      orElse: () => GroupModel(id: '', name: '', description: '', courseId: '', maxMembers: 0, memberIds: [], pendingMemberIds: [], leaderId: '')
     );
 
     final bool canRegister = myGroup.id.isNotEmpty && !myGroup.isLocked;
@@ -375,9 +421,12 @@ class _TopicListScreenState extends State<TopicListScreen> {
     final titleController = TextEditingController(text: topic?.title);
     final descController = TextEditingController(text: topic?.description);
     final maxController = TextEditingController(text: topic?.maxGroups.toString() ?? '3');
+    String? dialogSelectedCourseId = topic?.courseId;
     
     DateTime startTime = topic?.startTime ?? DateTime.now();
     DateTime endTime = topic?.endTime ?? DateTime.now().add(const Duration(days: 30));
+
+    final courses = context.read<CourseProvider>().courses;
 
     showDialog(
       context: context,
@@ -389,6 +438,13 @@ class _TopicListScreenState extends State<TopicListScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                DropdownButtonFormField<String>(
+                  initialValue: dialogSelectedCourseId,
+                  decoration: const InputDecoration(labelText: 'Môn học'),
+                  items: courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                  onChanged: (val) => setStateDialog(() => dialogSelectedCourseId = val),
+                ),
+                const SizedBox(height: 8),
                 TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Tên đề tài')),
                 const SizedBox(height: 8),
                 TextField(controller: descController, maxLines: 3, decoration: const InputDecoration(labelText: 'Mô tả')),
@@ -406,10 +462,15 @@ class _TopicListScreenState extends State<TopicListScreen> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Huỷ')),
             ElevatedButton(
               onPressed: () {
+                if (dialogSelectedCourseId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn môn học')));
+                  return;
+                }
                 final newTopic = TopicModel(
                   id: topic?.id ?? 't${DateTime.now().millisecondsSinceEpoch}',
                   title: titleController.text,
                   description: descController.text,
+                  courseId: dialogSelectedCourseId!,
                   maxGroups: int.parse(maxController.text),
                   lecturerId: context.read<AuthProvider>().user?.id ?? 'admin',
                   startTime: startTime,

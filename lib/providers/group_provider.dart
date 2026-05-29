@@ -22,7 +22,7 @@ class GroupProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createGroup(String name, String description, int maxMembers, String leaderId, String? topicId) async {
+  Future<void> createGroup(String name, String description, String courseId, int maxMembers, String leaderId, String? topicId) async {
     _isLoading = true;
     notifyListeners();
     
@@ -30,6 +30,7 @@ class GroupProvider with ChangeNotifier {
       id: '', // Will be assigned by backend
       name: name,
       description: description,
+      courseId: courseId,
       maxMembers: maxMembers,
       memberIds: [leaderId],
       pendingMemberIds: [],
