@@ -25,6 +25,27 @@ class CourseProvider with ChangeNotifier {
   final bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  // --- Lớp/môn đang được chọn (dùng cho chức năng Đổi lớp) ---
+  String? _selectedCourseId;
+  String? get selectedCourseId => _selectedCourseId;
+
+  CourseModel? get selectedCourse =>
+      _selectedCourseId == null ? null : getCourseById(_selectedCourseId!);
+
+  void selectCourse(String courseId) {
+    if (_selectedCourseId == courseId) return;
+    _selectedCourseId = courseId;
+    notifyListeners();
+  }
+
+  /// Đặt lớp mặc định (lớp đầu tiên SV đang học) nếu chưa chọn lớp nào.
+  void ensureDefaultCourse(List<String> enrolledCourseIds) {
+    if (_selectedCourseId != null) return;
+    if (enrolledCourseIds.isNotEmpty) {
+      _selectedCourseId = enrolledCourseIds.first;
+    }
+  }
+
   void addCourse(CourseModel course) {
     _courses.add(course);
     notifyListeners();

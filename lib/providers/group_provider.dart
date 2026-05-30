@@ -10,6 +10,23 @@ class GroupProvider with ChangeNotifier {
   List<GroupModel> get groups => _groups;
   bool get isLoading => _isLoading;
 
+  /// Nhóm mà [userId] đang tham gia (member hoặc pending) trong [courseId], nếu có.
+  GroupModel? groupOfUserInCourse(String userId, String courseId) {
+    for (final g in _groups) {
+      if (g.courseId == courseId &&
+          (g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId))) {
+        return g;
+      }
+    }
+    return null;
+  }
+
+  /// Kiểm tra [userId] đã thuộc nhóm nào (bất kỳ môn) chưa.
+  bool isInAnyGroup(String userId) {
+    return _groups.any((g) =>
+        g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId));
+  }
+
   GroupProvider() {
     fetchGroups();
   }
@@ -22,7 +39,14 @@ class GroupProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createGroup(String name, String description, String courseId, int maxMembers, String leaderId, String? topicId) async {
+  /// Tìm nhóm theo môn học và/hoặc từ khoá (dùng cho màn hình Tham gia nhóm).
+  /// Trả về danh sách trực tiếp, không ghi đè state của trang chủ.
+  Future<List<GroupModel>> searchGroups({String? courseId, String? search}) async {
+    return _apiService.getGroups(courseId: courseId, search: search);
+  }
+
+  /// Tạo nhóm. Trả về null nếu thành công, hoặc thông báo lỗi từ backend.
+  Future<String?> createGroup(String name, String description, String courseId, int maxMembers, String leaderId, String? topicId) async {
     _isLoading = true;
     notifyListeners();
     
@@ -38,20 +62,24 @@ class GroupProvider with ChangeNotifier {
       topicId: topicId,
     );
     
-    bool success = await _apiService.createGroup(newGroup);
-    if (success) {
+    final result = await _apiService.createGroup(newGroup);
+    final error = result['error'];
+    if (error == null) {
       await fetchGroups();
     }
     
     _isLoading = false;
     notifyListeners();
+    return error;
   }
 
-  Future<void> requestToJoin(String groupId, String userId) async {
-    bool success = await _apiService.joinGroup(groupId, userId);
-    if (success) {
+  /// Gửi yêu cầu gia nhập. Trả về null nếu thành công, hoặc thông báo lỗi.
+  Future<String?> requestToJoin(String groupId, String userId) async {
+    final error = await _apiService.joinGroup(groupId, userId);
+    if (error == null) {
       await fetchGroups();
     }
+    return error;
   }
 
   Future<void> acceptMember(String groupId, String userId) async {
@@ -74,6 +102,15 @@ class GroupProvider with ChangeNotifier {
     if (success) {
       await fetchGroups();
     }
+  }
+
+  /// Trưởng nhóm đăng ký đề tài. Trả về null nếu thành công, hoặc thông báo lỗi.
+  Future<String?> registerTopic(String groupId, String topicId, String leaderId) async {
+    final error = await _apiService.registerTopic(groupId, topicId, leaderId);
+    if (error == null) {
+      await fetchGroups();
+    }
+    return error;
   }
 
   Future<void> updateGroupStatus(String groupId, String status, {bool? isLocked}) async {

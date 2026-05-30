@@ -22,6 +22,11 @@ class TopicProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Lấy danh sách đề tài còn chỗ (dùng cho màn hình Chọn đề tài).
+  Future<List<TopicModel>> getAvailableTopics({String? courseId}) async {
+    return _apiService.getAvailableTopics(courseId: courseId);
+  }
+
   Future<void> addTopic(TopicModel topic) async {
     _isLoading = true;
     notifyListeners();
