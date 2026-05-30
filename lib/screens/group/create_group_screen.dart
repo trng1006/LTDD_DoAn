@@ -6,7 +6,6 @@ import '../../core/widgets/app_dialog.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/course_provider.dart';
-import '../../models/user_model.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   final String? initialCourseId;

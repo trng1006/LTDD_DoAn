@@ -109,7 +109,7 @@ class _ManageCoursesScreenState extends State<ManageCoursesScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Thuộc học kỳ'),
-                  value: selectedSemesterId,
+                  initialValue: selectedSemesterId,
                   items: provider.semesters
                       .map(
                         (s) =>
@@ -194,10 +194,11 @@ class _ManageCoursesScreenState extends State<ManageCoursesScreen> {
                           trailing: Switch(
                             value: sem.isActive,
                             onChanged: (val) {
-                              if (val)
+                              if (val) {
                                 provider.setSemesterActive(
                                   sem.id,
-                                ); // Chỉ cho phép bật
+                                );
+                              } // Chỉ cho phép bật
                             },
                           ),
                         ),

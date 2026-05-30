@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../core/widgets/app_dialog.dart';
 import '../../models/course_model.dart';
 import '../../models/group_model.dart';
-import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/course_provider.dart';
 import '../../providers/group_provider.dart';

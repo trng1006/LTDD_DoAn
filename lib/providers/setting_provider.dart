@@ -1,7 +1,6 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 class SettingProvider extends ChangeNotifier {
   final String _baseUrl = kIsWeb ? 'http://localhost:8000' : 'http://127.0.0.1';

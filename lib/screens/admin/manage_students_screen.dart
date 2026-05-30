@@ -176,7 +176,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: selectedRole,
+                      initialValue: selectedRole,
                       decoration: const InputDecoration(labelText: 'Vai trò'),
                       items: const [
                         DropdownMenuItem(value: 'student', child: Text('Sinh viên')),

@@ -14,7 +14,7 @@ def get_db_connection():
             user=os.getenv("DB_USER", "root"),
             password=os.getenv("DB_PASSWORD", ""),
             database=os.getenv("DB_NAME", "student_registration"),
-            port=int(os.getenv("DB_PORT", 3307))  # <-- Cấu hình cổng 3307 ở đây
+            port=int(os.getenv("DB_PORT", 3306))  # <-- Cấu hình cổng 3306 ở đây
         )
         if connection.is_connected():
             return connection
@@ -22,7 +22,7 @@ def get_db_connection():
             print("DEBUG: Connection failed: connection.is_connected() is False")
             return None
     except Error as e:
-        print(f"DEBUG: Connection details - Host: {os.getenv('DB_HOST', '127.0.0.1')}, Port: {os.getenv('DB_PORT', 3307)}, User: {os.getenv('DB_USER', 'root')}, DB: {os.getenv('DB_NAME', 'student_registration')}")
+        print(f"DEBUG: Connection details - Host: {os.getenv('DB_HOST', '127.0.0.1')}, Port: {os.getenv('DB_PORT', 3306)}, User: {os.getenv('DB_USER', 'root')}, DB: {os.getenv('DB_NAME', 'student_registration')}")
         print(f"DEBUG: Error while connecting to MySQL: {e}")
         return None
     except Exception as e:

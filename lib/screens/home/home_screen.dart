@@ -7,6 +7,7 @@ import '../../core/widgets/app_dialog.dart';
 import '../../providers/course_provider.dart';
 import '../../models/group_model.dart';
 import '../../models/user_model.dart';
+import '../../models/course_model.dart';
 import '../group/create_group_screen.dart';
 import '../group/join_group_screen.dart';
 
@@ -35,8 +36,9 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildStudentHome(BuildContext context, UserModel user, GroupProvider groupProvider, CourseProvider courseProvider) {
-    // SV luôn có lớp mặc định
-    courseProvider.ensureDefaultCourse(user.enrolledCourseIds);
+    // SV luôn có lớp mặc định. Dùng microtask để tránh lỗi "setState() called during build"
+    Future.microtask(() => courseProvider.ensureDefaultCourse(user.enrolledCourseIds));
+    
     final selectedCourse = courseProvider.selectedCourse;
     final semesterName = courseProvider.getSemesterName(selectedCourse?.semesterId);
 

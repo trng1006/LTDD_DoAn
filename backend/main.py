@@ -6,7 +6,7 @@ import mysql.connector
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Hệ thống Đăng ký Đề tài API")
-
+#python3 -m uvicorn main:app --reload
 # --- CORS configuration ---
 app.add_middleware(
     CORSMiddleware,
