@@ -101,17 +101,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       TextButton(
                         onPressed: () { Navigator.pushNamed(context, AppRoutes.forgotPassword); },
                         child: const Text("Quên mật khẩu?"),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, AppRoutes.register);
-                        },
-                        child: const Text('Đăng ký Sinh viên'),
                       ),
                     ],
                   ),

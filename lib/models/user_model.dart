@@ -3,12 +3,14 @@ class UserModel {
   final String email;
   final String name;
   final String role; // student, lecturer, admin
+  final String identity; // MSSV or Staff ID
 
   UserModel({
     required this.id,
     required this.email,
     required this.name,
     required this.role,
+    this.identity = '',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class UserModel {
       email: json['email'] ?? '',
       name: json['name'] ?? '',
       role: json['role'] ?? '',
+      identity: json['identity'] ?? '',
     );
   }
 
@@ -26,6 +29,7 @@ class UserModel {
       'email': email,
       'name': name,
       'role': role,
+      'identity': identity,
     };
   }
 }

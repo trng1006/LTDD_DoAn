@@ -1,5 +1,5 @@
 class AppRoutes {
-  static const String login = '/';
+  static const String login = '/login';
   static const String register = '/register';
   static const String home = '/home';
   static const String manageGroup = '/manage-group';
@@ -10,4 +10,5 @@ class AppRoutes {
   static const String manageUsers = "/manage-users";
   static const String statistics = "/statistics";
   static const String systemSettings = "/system-settings";
+  static const String profile = "/profile";
 }

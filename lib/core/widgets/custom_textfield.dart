@@ -5,6 +5,7 @@ class CustomTextField extends StatelessWidget {
   final String hint;
   final IconData? prefixIcon;
   final bool isPassword;
+  final bool readOnly;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
   final TextInputType keyboardType;
@@ -15,6 +16,7 @@ class CustomTextField extends StatelessWidget {
     required this.hint,
     this.prefixIcon,
     this.isPassword = false,
+    this.readOnly = false,
     this.controller,
     this.validator,
     this.keyboardType = TextInputType.text,
@@ -25,6 +27,7 @@ class CustomTextField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
+      readOnly: readOnly,
       validator: validator,
       keyboardType: keyboardType,
       decoration: InputDecoration(
