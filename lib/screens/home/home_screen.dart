@@ -3,8 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/auth_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/core/constants/app_routes.dart';
+import '../../core/widgets/app_dialog.dart';
 import '../../providers/course_provider.dart';
 import '../../models/group_model.dart';
+import '../group/create_group_screen.dart';
+import '../group/join_group_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -56,7 +59,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 32),
             
             if (isStudent || isLecturer) ...[
-              _buildSubjectSelector(context),
+              _buildSubjectSelector(context, user),
               const SizedBox(height: 24),
             ],
 
@@ -73,7 +76,51 @@ class HomeScreen extends StatelessWidget {
                 'Đăng ký làm Trưởng nhóm cho môn học',
                 Icons.group_add_rounded,
                 Colors.blue,
-                () => Navigator.pushNamed(context, AppRoutes.manageGroup),
+                () {
+                  final courseId = courseProvider.selectedCourseId;
+                  if (courseId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Vui lòng chọn môn học trước.')),
+                    );
+                    return;
+                  }
+                  if (groupProvider.groupOfUserInCourse(user.id, courseId) != null) {
+                    showAlreadyInGroupDialog(context);
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CreateGroupScreen(initialCourseId: courseId),
+                      ),
+                    );
+                  }
+                },
+              ),
+              _buildActionCard(
+                context,
+                'Tham gia nhóm mới',
+                'Tìm và gửi yêu cầu gia nhập nhóm',
+                Icons.person_add_alt_1_rounded,
+                Colors.green,
+                () {
+                  final courseId = courseProvider.selectedCourseId;
+                  if (courseId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Vui lòng chọn môn học trước.')),
+                    );
+                    return;
+                  }
+                  if (groupProvider.groupOfUserInCourse(user.id, courseId) != null) {
+                    showAlreadyInGroupDialog(context);
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => JoinGroupScreen(initialCourseId: courseId),
+                      ),
+                    );
+                  }
+                },
               ),
               const SizedBox(height: 16),
               
@@ -85,10 +132,12 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 ...myGroups.map((group) {
                   final bool isLeader = group.leaderId == user.id;
+                  final courseName =
+                      courseProvider.getCourseById(group.courseId)?.name ?? 'Chưa rõ môn';
                   return _buildActionCard(
                     context,
                     group.name,
-                    'Quản lý thành viên (${group.memberIds.length} TV)${isLeader ? ' - Trưởng nhóm' : ''}',
+                    'Lớp: $courseName\nQuản lý thành viên (${group.memberIds.length} TV)${isLeader ? ' - Trưởng nhóm' : ''}',
                     Icons.groups_rounded,
                     Colors.indigo,
                     () => Navigator.pushNamed(context, AppRoutes.manageGroup), // Should probably pass group to detail screen
@@ -175,7 +224,15 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSubjectSelector(BuildContext context) {
+  Widget _buildSubjectSelector(BuildContext context, dynamic user) {
+    final courseProvider = context.watch<CourseProvider>();
+    // Đảm bảo có lớp mặc định (lớp đầu tiên SV đang học).
+    final enrolledIds = (user?.enrolledCourseIds as List<String>?) ?? const [];
+    courseProvider.ensureDefaultCourse(enrolledIds);
+
+    final selected = courseProvider.selectedCourse;
+    final bool canChange = enrolledIds.length > 1;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -192,13 +249,58 @@ class HomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Môn học hiện tại:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                Text('Phân tích thiết kế hệ thống', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900)),
+                Text(
+                  selected?.name ?? 'Chưa chọn môn',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                ),
               ],
             ),
           ),
-          TextButton(onPressed: () {}, child: const Text('Đổi môn')),
+          if (canChange)
+            TextButton(
+              onPressed: () => _showCoursePicker(context, enrolledIds),
+              child: const Text('Đổi môn'),
+            ),
         ],
+      ),
+    );
+  }
+
+  void _showCoursePicker(BuildContext context, List<String> enrolledIds) {
+    final courseProvider = context.read<CourseProvider>();
+    final myCourses =
+        courseProvider.courses.where((c) => enrolledIds.contains(c.id)).toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            const Text('Chọn môn học', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 8),
+            ...myCourses.map((c) {
+              final bool isCurrent = c.id == courseProvider.selectedCourseId;
+              return ListTile(
+                leading: Icon(
+                  isCurrent ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: isCurrent ? Colors.blue : Colors.grey,
+                ),
+                title: Text(c.name),
+                subtitle: Text('Mã môn: ${c.code}'),
+                onTap: () {
+                  courseProvider.selectCourse(c.id);
+                  Navigator.pop(sheetContext);
+                },
+              );
+            }),
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }
@@ -219,9 +321,23 @@ class HomeScreen extends StatelessWidget {
             trailing: isPending 
               ? const Text('Đang chờ...', style: TextStyle(color: Colors.orange))
               : ElevatedButton(
-                  onPressed: () {
-                    provider.requestToJoin(group.id, userId);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã gửi yêu cầu gia nhập!')));
+                  onPressed: () async {
+                    if (provider.isInAnyGroup(userId)) {
+                      showAlreadyInGroupDialog(context);
+                      return;
+                    }
+                    final error = await provider.requestToJoin(group.id, userId);
+                    if (!context.mounted) return;
+                    if (error != null && (error.contains('nhóm khác') || error.contains('1 nhóm'))) {
+                      showAlreadyInGroupDialog(context, message: error);
+                      return;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(error ?? 'Đã gửi yêu cầu gia nhập!'),
+                        backgroundColor: error == null ? Colors.green : Colors.red,
+                      ),
+                    );
                   }, 
                   child: const Text('Gia nhập')
                 ),

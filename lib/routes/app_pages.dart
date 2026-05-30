@@ -5,6 +5,7 @@ import 'package:ungdungdangkinhomvachondetai/screens/auth/register_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/auth/forgot_password_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/home/home_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/group/manage_group_screen.dart';
+import 'package:ungdungdangkinhomvachondetai/screens/group/join_group_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/topic/topic_list_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/admin/admin_dashboard_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/notification/notification_screen.dart';
@@ -21,6 +22,7 @@ class AppPages {
     AppRoutes.forgotPassword: (context) => const ForgotPasswordScreen(),
     AppRoutes.home: (context) => const HomeScreen(),
     AppRoutes.manageGroup: (context) => const ManageGroupScreen(),
+    AppRoutes.joinGroup: (context) => const JoinGroupScreen(),
     AppRoutes.topicList: (context) => const TopicListScreen(),
     AppRoutes.adminDashboard: (context) => const AdminDashboardScreen(),
     AppRoutes.notifications: (context) => const NotificationScreen(),

@@ -6,7 +6,16 @@ import '../../models/topic_model.dart';
 import '../../models/group_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://10.0.2.2:8000'; // IP mặc định cho Android Emulator
+  // Tự động chọn địa chỉ backend theo nền tảng đang chạy:
+  // - Android Emulator dùng 10.0.2.2 để trỏ về localhost của máy host
+  // - Web / Windows / iOS Simulator dùng localhost trực tiếp
+  static String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8000';
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8000';
+    }
+    return 'http://localhost:8000';
+  }
 
   // --- Auth ---
   Future<UserModel?> login(String identity, String password) async {
@@ -77,12 +86,56 @@ class ApiService {
     }
   }
 
-  // --- Groups ---
-  Future<List<GroupModel>> getGroups() async {
+  /// Danh sách đề tài còn chỗ để nhóm đăng ký.
+  Future<List<TopicModel>> getAvailableTopics({String? courseId}) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/groups'));
+      final params = <String, String>{};
+      if (courseId != null && courseId.isNotEmpty) params['course_id'] = courseId;
+      final uri = Uri.parse('$baseUrl/topics/available')
+          .replace(queryParameters: params.isEmpty ? null : params);
+      final response = await http.get(uri);
       if (response.statusCode == 200) {
-        List data = jsonDecode(response.body);
+        List data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data.map((t) => TopicModel.fromJson(t)).toList();
+      }
+    } catch (e) {
+      debugPrint('Get Available Topics Error: $e');
+    }
+    return [];
+  }
+
+  /// Trưởng nhóm đăng ký đề tài cho nhóm.
+  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi từ backend.
+  Future<String?> registerTopic(String groupId, String topicId, String leaderId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/groups/$groupId/register-topic'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'topicId': topicId, 'leaderId': leaderId}),
+      );
+      if (response.statusCode == 200) return null;
+      try {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        return body['detail']?.toString() ?? 'Đăng ký đề tài thất bại.';
+      } catch (_) {
+        return 'Đăng ký đề tài thất bại.';
+      }
+    } catch (e) {
+      debugPrint('Register Topic Error: $e');
+      return 'Không thể kết nối tới máy chủ.';
+    }
+  }
+
+  // --- Groups ---
+  Future<List<GroupModel>> getGroups({String? courseId, String? search}) async {
+    try {
+      final params = <String, String>{};
+      if (courseId != null && courseId.isNotEmpty) params['course_id'] = courseId;
+      if (search != null && search.isNotEmpty) params['search'] = search;
+      final uri = Uri.parse('$baseUrl/groups').replace(queryParameters: params.isEmpty ? null : params);
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        List data = jsonDecode(utf8.decode(response.bodyBytes));
         return data.map((g) => GroupModel.fromJson(g)).toList();
       }
     } catch (e) {
@@ -91,17 +144,28 @@ class ApiService {
     return [];
   }
 
-  Future<bool> createGroup(GroupModel group) async {
+  /// Tạo nhóm. Trả về Map: { 'error': String? , 'id': String? }.
+  /// error == null nghĩa là thành công.
+  Future<Map<String, String?>> createGroup(GroupModel group) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/groups'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(group.toJson()),
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        return {'error': null, 'id': body['id']?.toString()};
+      }
+      try {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        return {'error': body['detail']?.toString() ?? 'Tạo nhóm thất bại.', 'id': null};
+      } catch (_) {
+        return {'error': 'Tạo nhóm thất bại.', 'id': null};
+      }
     } catch (e) {
       debugPrint('Create Group Error: $e');
-      return false;
+      return {'error': 'Không thể kết nối tới máy chủ.', 'id': null};
     }
   }
 
@@ -119,17 +183,25 @@ class ApiService {
     }
   }
 
-  Future<bool> joinGroup(String groupId, String userId) async {
+  /// Gửi yêu cầu gia nhập nhóm.
+  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi từ backend nếu thất bại.
+  Future<String?> joinGroup(String groupId, String userId) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/groups/$groupId/join'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'user_id': userId}),
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200) return null;
+      try {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        return body['detail']?.toString() ?? 'Gửi yêu cầu thất bại.';
+      } catch (_) {
+        return 'Gửi yêu cầu thất bại.';
+      }
     } catch (e) {
       debugPrint('Join Group Error: $e');
-      return false;
+      return 'Không thể kết nối tới máy chủ.';
     }
   }
 

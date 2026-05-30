@@ -3,6 +3,8 @@ class AppRoutes {
   static const String register = '/register';
   static const String home = '/home';
   static const String manageGroup = '/manage-group';
+  static const String joinGroup = '/join-group';
+  static const String selectTopic = '/select-topic';
   static const String topicList = '/topics';
   static const String adminDashboard = "/admin";
   static const String forgotPassword = "/forgot-password";

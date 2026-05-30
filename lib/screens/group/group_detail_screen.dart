@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/auth_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/models/group_model.dart';
+import 'package:ungdungdangkinhomvachondetai/screens/topic/select_topic_screen.dart';
 
 class GroupDetailScreen extends StatefulWidget {
   final GroupModel group;
@@ -50,6 +51,24 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
             _buildMemberSection(context, currentGroup, isLeader, isLocked),
             const SizedBox(height: 32),
+
+            if (isLeader && !isLocked)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openSelectTopic(context, currentGroup),
+                    icon: const Icon(Icons.assignment_turned_in_rounded),
+                    label: Text(currentGroup.topicId == null ? 'Chọn đề tài' : 'Đổi đề tài'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: const Color(0xFF2F6BFF),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
 
             if (isLeader && !isLocked)
               SizedBox(
@@ -194,6 +213,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         }),
       ],
     );
+  }
+
+  Future<void> _openSelectTopic(BuildContext context, GroupModel group) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => SelectTopicScreen(group: group)),
+    );
+    if (context.mounted) {
+      context.read<GroupProvider>().fetchGroups();
+    }
   }
 
   void _showSettings(BuildContext context, GroupModel group) {

@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS `groups` (
     `leader_id` VARCHAR(50),
     `course_id` VARCHAR(50),
     `max_members` INT DEFAULT 5,
+    `min_members` INT DEFAULT 2,
     `topic_id` INT,
     `status` ENUM('creating', 'pending_approval', 'approved', 'rejected') DEFAULT 'creating',
     `is_locked` BOOLEAN DEFAULT FALSE,
