@@ -168,6 +168,14 @@ class HomeScreen extends StatelessWidget {
             if (isLecturer) ...[
               _buildActionCard(
                 context,
+                'Tạo sinh viên mới',
+                'Cấp tài khoản cho sinh viên của bạn',
+                Icons.person_add_rounded,
+                Colors.indigo,
+                () => Navigator.pushNamed(context, AppRoutes.register),
+              ),
+              _buildActionCard(
+                context,
                 'Quản lý đề tài',
                 'Thêm mới và chỉnh sửa đề tài của bạn',
                 Icons.book_rounded,
@@ -193,6 +201,14 @@ class HomeScreen extends StatelessWidget {
             ],
             
             if (isAdmin) ...[
+              _buildActionCard(
+                context,
+                'Tạo sinh viên mới',
+                'Thêm sinh viên mới vào hệ thống',
+                Icons.person_add_alt_1_rounded,
+                Colors.deepOrange,
+                () => Navigator.pushNamed(context, AppRoutes.register),
+              ),
               _buildActionCard(
                 context,
                 'Toàn bộ đề tài',
@@ -347,6 +363,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+<<<<<<< HEAD
   Widget _buildHeader(BuildContext context, dynamic user, {String? semesterName}) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -391,9 +408,46 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ],
+=======
+  Widget _buildHeader(BuildContext context, dynamic user) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 35,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: Text(
+                user.name.isNotEmpty ? user.name[0] : 'U',
+                style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Chào mừng,', style: Theme.of(context).textTheme.bodyMedium),
+                  Text(user.name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, borderRadius: BorderRadius.circular(10)),
+                    child: Text(user.role.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+>>>>>>> phuong
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

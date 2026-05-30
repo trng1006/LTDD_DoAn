@@ -4,9 +4,13 @@ class UserModel {
   final String email;
   final String name;
   final String role; // student, lecturer, admin
+<<<<<<< HEAD
   final List<String> enrolledCourseIds; 
   final List<String> taughtCourseIds; 
   final String? currentSemesterId; 
+=======
+  final String identity; // MSSV or Staff ID
+>>>>>>> phuong
 
   UserModel({
     required this.id,
@@ -14,9 +18,13 @@ class UserModel {
     required this.email,
     required this.name,
     required this.role,
+<<<<<<< HEAD
     this.enrolledCourseIds = const [],
     this.taughtCourseIds = const [],
     this.currentSemesterId,
+=======
+    this.identity = '',
+>>>>>>> phuong
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -26,9 +34,13 @@ class UserModel {
       email: json['email'] ?? '',
       name: json['name'] ?? '',
       role: json['role'] ?? '',
+<<<<<<< HEAD
       enrolledCourseIds: List<String>.from(json['enrolledCourseIds'] ?? []),
       taughtCourseIds: List<String>.from(json['taughtCourseIds'] ?? []),
       currentSemesterId: json['currentSemesterId'],
+=======
+      identity: json['identity'] ?? '',
+>>>>>>> phuong
     );
   }
 
@@ -39,9 +51,13 @@ class UserModel {
       'email': email,
       'name': name,
       'role': role,
+<<<<<<< HEAD
       'enrolledCourseIds': enrolledCourseIds,
       'taughtCourseIds': taughtCourseIds,
       'currentSemesterId': currentSemesterId,
+=======
+      'identity': identity,
+>>>>>>> phuong
     };
   }
 }
