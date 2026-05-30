@@ -131,6 +131,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+<<<<<<< Updated upstream
   Widget _buildAdminHome(BuildContext context, UserModel user) {
     return Scaffold(
       appBar: AppBar(title: const Text('Quản trị viên')),
@@ -143,10 +144,92 @@ class HomeScreen extends StatelessWidget {
           _buildActionCard(context, 'Người dùng', 'Quản lý Sinh viên và Giảng viên', Icons.people_alt_outlined, Colors.blue, () => Navigator.pushNamed(context, AppRoutes.manageUsers)),
           _buildActionCard(context, 'Thống kê', 'Báo cáo số lượng nhóm, đề tài', Icons.bar_chart_rounded, Colors.teal, () => Navigator.pushNamed(context, AppRoutes.statistics)),
         ],
+=======
+  void _showCoursePicker(BuildContext context, List<String> enrolledIds) {
+    final courseProvider = context.read<CourseProvider>();
+    final myCourses =
+        courseProvider.courses.where((c) => enrolledIds.contains(c.id)).toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            const Text('Chọn môn học', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 8),
+            ...myCourses.map((c) {
+              final bool isCurrent = c.id == courseProvider.selectedCourseId;
+              return ListTile(
+                leading: Icon(
+                  isCurrent ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: isCurrent ? Colors.blue : Colors.grey,
+                ),
+                title: Text(c.name),
+                subtitle: Text('Mã môn: ${c.code}'),
+                onTap: () {
+                  courseProvider.selectCourse(c.id);
+                  Navigator.pop(sheetContext);
+                },
+              );
+            }),
+            const SizedBox(height: 12),
+          ],
+        ),
+>>>>>>> Stashed changes
       ),
     );
   }
 
+<<<<<<< Updated upstream
+=======
+  Widget _buildAvailableGroups(BuildContext context, GroupProvider provider, String userId) {
+    final availableGroups = provider.groups.where((g) => !g.memberIds.contains(userId) && g.memberIds.length < g.maxMembers).toList();
+    
+    if (availableGroups.isEmpty) return const Text('Không có nhóm nào đang tuyển.');
+
+    return Column(
+      children: availableGroups.map((group) {
+        final bool isPending = group.pendingMemberIds.contains(userId);
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(group.name),
+            subtitle: Text('${group.memberIds.length}/${group.maxMembers} TV - Trưởng: ${group.leaderId}'),
+            trailing: isPending 
+              ? const Text('Đang chờ...', style: TextStyle(color: Colors.orange))
+              : ElevatedButton(
+                  onPressed: () async {
+                    if (provider.isInAnyGroup(userId)) {
+                      showAlreadyInGroupDialog(context);
+                      return;
+                    }
+                    final error = await provider.requestToJoin(group.id, userId);
+                    if (!context.mounted) return;
+                    if (error != null && (error.contains('nhóm khác') || error.contains('1 nhóm'))) {
+                      showAlreadyInGroupDialog(context, message: error);
+                      return;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(error ?? 'Đã gửi yêu cầu gia nhập!'),
+                        backgroundColor: error == null ? Colors.green : Colors.red,
+                      ),
+                    );
+                  }, 
+                  child: const Text('Gia nhập')
+                ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+>>>>>>> Stashed changes
   Widget _buildHeader(BuildContext context, UserModel user, {String? semesterName}) {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, AppRoutes.profile),

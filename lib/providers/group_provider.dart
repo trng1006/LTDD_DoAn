@@ -28,8 +28,9 @@ class GroupProvider with ChangeNotifier {
     String courseId,
     int maxMembers,
     String leaderId,
-    String? topicId,
-  ) async {
+    String? topicId, {
+    int minMembers = 2,
+  }) async {
     _isLoading = true;
     notifyListeners();
 
@@ -38,6 +39,7 @@ class GroupProvider with ChangeNotifier {
       name: name,
       description: description,
       maxMembers: maxMembers,
+      minMembers: minMembers,
       memberIds: [leaderId],
       pendingMemberIds: [],
       leaderId: leaderId,
@@ -100,7 +102,7 @@ class GroupProvider with ChangeNotifier {
 
   GroupModel? groupOfUserInCourse(String userId, String courseId) {
     try {
-      return _groups.firstWhere((g) => g.memberIds.contains(userId));
+      return _groups.firstWhere((g) => g.courseId == courseId && g.memberIds.contains(userId));
     } catch (_) {
       return null;
     }

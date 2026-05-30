@@ -73,12 +73,9 @@ class AuthProvider with ChangeNotifier {
   Future<bool> updateUser(String name, String email) async {
     if (_user == null) return false;
     
-    final updatedUser = UserModel(
-      id: _user!.id,
+    final updatedUser = _user!.copyWith(
       name: name,
       email: email,
-      role: _user!.role,
-      identity: _user!.identity,
     );
 
     final success = await _apiService.updateUser(updatedUser);

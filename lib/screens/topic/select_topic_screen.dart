@@ -60,6 +60,17 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
     final user = context.read<AuthProvider>().user;
     if (user == null) return;
 
+    // Validation số lượng thành viên tối thiểu trước khi gửi lên backend
+    if (widget.group.memberIds.length < widget.group.minMembers) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Nhóm chưa đủ thành viên tối thiểu (${widget.group.memberIds.length}/${widget.group.minMembers}). Vui lòng bổ sung thành viên trước khi đăng ký.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     final error = await context.read<GroupProvider>().registerTopic(
           widget.group.id,

@@ -6,6 +6,7 @@ import '../../core/widgets/app_dialog.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/course_provider.dart';
+import '../../models/user_model.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   final String? initialCourseId;
@@ -20,6 +21,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   int _maxMembers = 5;
+  int _minMembers = 2;
   String? _selectedCourseId;
 
   @override
@@ -57,6 +59,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         _maxMembers,
         userId,
         null, // topicId is null when creating a new group
+        minMembers: _minMembers,
       );
 
       if (!mounted) return;
@@ -120,6 +123,21 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 controller: _descController,
               ),
               const SizedBox(height: 24),
+              Text('Số lượng thành viên tối thiểu: $_minMembers', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Slider(
+                value: _minMembers.toDouble(),
+                min: 1,
+                max: 5,
+                divisions: 4,
+                label: _minMembers.toString(),
+                onChanged: (value) {
+                  setState(() {
+                    _minMembers = value.toInt();
+                    if (_minMembers > _maxMembers) _maxMembers = _minMembers;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
               Text('Số lượng thành viên tối đa: $_maxMembers', style: const TextStyle(fontWeight: FontWeight.bold)),
               Slider(
                 value: _maxMembers.toDouble(),
@@ -130,6 +148,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 onChanged: (value) {
                   setState(() {
                     _maxMembers = value.toInt();
+                    if (_maxMembers < _minMembers) _minMembers = _maxMembers;
                   });
                 },
               ),
