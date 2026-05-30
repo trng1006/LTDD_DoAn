@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-=======
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
->>>>>>> phuong
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_textfield.dart';
 
@@ -16,7 +13,6 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -25,7 +21,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -36,10 +31,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
-<<<<<<< HEAD
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đăng ký thành công!')),
-=======
       if (_passwordController.text != _confirmPasswordController.text) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Mật khẩu xác nhận không khớp')),
@@ -61,7 +52,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _emailController.text.trim(),
         _passwordController.text,
         _identityController.text.trim(),
->>>>>>> phuong
       );
 
       if (mounted) {
@@ -98,11 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     return Scaffold(
-<<<<<<< HEAD
-      appBar: AppBar(title: const Text('Đăng ký tài khoản')),
-=======
       appBar: AppBar(title: const Text('Thêm Sinh viên mới')),
->>>>>>> phuong
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -113,15 +99,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 Text('Tạo tài khoản sinh viên',
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 28)),
-<<<<<<< HEAD
-                const SizedBox(height: 32),
-                CustomTextField(
-                  label: 'Tên đăng nhập',
-                  hint: 'Ví dụ: nguyenvana123',
-                  prefixIcon: Icons.account_circle_outlined,
-                  controller: _usernameController,
-                  validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập tên đăng nhập' : null,
-=======
                 const SizedBox(height: 8),
                 const Text('Vui lòng nhập đầy đủ thông tin để cấp tài khoản.'),
                 const SizedBox(height: 32),
@@ -131,7 +108,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icons.badge_outlined,
                   controller: _identityController,
                   validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập MSSV' : null,
->>>>>>> phuong
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(
@@ -144,7 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
                 CustomTextField(
                   label: 'Email',
-                  hint: 'example@gmail.com',
+                  hint: 'sv... @gmail.com',
                   prefixIcon: Icons.email_outlined,
                   controller: _emailController,
                   validator: (value) {

@@ -1,14 +1,7 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-import 'package:provider/provider.dart';
-import '../../providers/user_provider.dart';
-import '../../providers/course_provider.dart';
-import '../../models/user_model.dart';
-=======
 import '../../core/services/api_service.dart';
 import '../../models/user_model.dart';
 import '../../core/constants/app_routes.dart';
->>>>>>> phuong
 
 class ManageStudentsScreen extends StatefulWidget {
   const ManageStudentsScreen({super.key});
@@ -48,36 +41,6 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final userProvider = context.watch<UserProvider>();
-    final courseProvider = context.watch<CourseProvider>();
-    
-    final students = userProvider.users.where((u) => u.role == 'student').toList();
-    final lecturers = userProvider.users.where((u) => u.role == 'lecturer').toList();
-
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Quản lý Người dùng'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Sinh viên'),
-              Tab(text: 'Giảng viên'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildUserList(context, students, courseProvider, userProvider),
-            _buildUserList(context, lecturers, courseProvider, userProvider),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.person_add),
-        ),
-=======
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quản lý Người dùng'),
@@ -106,102 +69,10 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> {
           _fetchUsers(); // Refresh after returning
         },
         child: const Icon(Icons.person_add),
->>>>>>> phuong
       ),
     );
   }
 
-<<<<<<< HEAD
-  Widget _buildUserList(BuildContext context, List<UserModel> users, CourseProvider courseProvider, UserProvider userProvider) {
-    if (users.isEmpty) return const Center(child: Text('Không có người dùng nào.'));
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: users.length,
-      itemBuilder: (context, index) {
-        final user = users[index];
-        return Card(
-          child: ListTile(
-            leading: CircleAvatar(child: Text(user.name[0])),
-            title: Text(user.name),
-            subtitle: Text(user.email),
-            trailing: user.role == 'student' 
-              ? IconButton(
-                  icon: const Icon(Icons.book_rounded, color: Colors.blue),
-                  onPressed: () => _showEnrollmentDialog(context, user, courseProvider, userProvider),
-                )
-              : null,
-            onTap: () {
-              // Edit user profile
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  void _showEnrollmentDialog(BuildContext context, UserModel student, CourseProvider courseProvider, UserProvider userProvider) {
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) {
-          final enrolledCourses = courseProvider.courses.where((c) => student.enrolledCourseIds.contains(c.id)).toList();
-          final availableCourses = courseProvider.courses.where((c) => !student.enrolledCourseIds.contains(c.id)).toList();
-
-          return AlertDialog(
-            title: Text('Đăng ký môn học: ${student.name}'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Môn đã đăng ký:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  if (enrolledCourses.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: Text('Chưa đăng ký môn nào.', style: TextStyle(fontStyle: FontStyle.italic)),
-                    )
-                  else
-                    ...enrolledCourses.map((c) => ListTile(
-                      title: Text(c.name),
-                      subtitle: Text(c.code),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                        onPressed: () {
-                          userProvider.unenrollUserFromCourse(student.id, c.id);
-                          setStateDialog(() {});
-                        },
-                      ),
-                    )),
-                  const Divider(),
-                  const Text('Môn có sẵn:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  if (availableCourses.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: Text('Tất cả các môn đã được đăng ký.', style: TextStyle(fontStyle: FontStyle.italic)),
-                    )
-                  else
-                    ...availableCourses.map((c) => ListTile(
-                      title: Text(c.name),
-                      subtitle: Text(c.code),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.add_circle_outline, color: Colors.green),
-                        onPressed: () {
-                          userProvider.enrollUserInCourse(student.id, c.id);
-                          setStateDialog(() {});
-                        },
-                      ),
-                    )),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng')),
-            ],
-          );
-        },
-=======
   Widget _userTile(UserModel user) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -241,7 +112,6 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> {
             child: const Text('Xóa', style: TextStyle(color: Colors.red)),
           ),
         ],
->>>>>>> phuong
       ),
     );
   }
