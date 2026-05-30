@@ -6,31 +6,19 @@ import '../../models/topic_model.dart';
 import '../../models/group_model.dart';
 
 class ApiService {
-<<<<<<< HEAD
   // Tự động chọn địa chỉ backend theo nền tảng đang chạy:
-  // - Android Emulator dùng 10.0.2.2 để trỏ về localhost của máy host
-  // - Web / Windows / iOS Simulator dùng localhost trực tiếp
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:8000';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000';
-    }
-    return 'http://localhost:8000';
-=======
-  // Tự động nhận diện môi trường để đặt Base URL
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000';
-    }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return 'http://10.0.2.2:8000';
       case TargetPlatform.iOS:
-        return 'http://localhost:8000';
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
       default:
         return 'http://localhost:8000';
     }
->>>>>>> phuong
   }
 
   // --- Auth & Users ---
@@ -208,7 +196,6 @@ class ApiService {
     }
   }
 
-<<<<<<< HEAD
   /// Danh sách đề tài còn chỗ để nhóm đăng ký.
   Future<List<TopicModel>> getAvailableTopics({String? courseId}) async {
     try {
@@ -217,15 +204,6 @@ class ApiService {
       final uri = Uri.parse('$baseUrl/topics/available')
           .replace(queryParameters: params.isEmpty ? null : params);
       final response = await http.get(uri);
-=======
-  // --- Groups ---
-  Future<List<GroupModel>> getGroups({String? topicId}) async {
-    try {
-      final url = topicId != null 
-          ? '$baseUrl/groups?topic_id=$topicId' 
-          : '$baseUrl/groups';
-      final response = await http.get(Uri.parse(url));
->>>>>>> phuong
       if (response.statusCode == 200) {
         List data = jsonDecode(utf8.decode(response.bodyBytes));
         return data.map((t) => TopicModel.fromJson(t)).toList();
@@ -259,11 +237,12 @@ class ApiService {
   }
 
   // --- Groups ---
-  Future<List<GroupModel>> getGroups({String? courseId, String? search}) async {
+  Future<List<GroupModel>> getGroups({String? courseId, String? search, String? topicId}) async {
     try {
       final params = <String, String>{};
       if (courseId != null && courseId.isNotEmpty) params['course_id'] = courseId;
       if (search != null && search.isNotEmpty) params['search'] = search;
+      if (topicId != null && topicId.isNotEmpty) params['topic_id'] = topicId;
       final uri = Uri.parse('$baseUrl/groups').replace(queryParameters: params.isEmpty ? null : params);
       final response = await http.get(uri);
       if (response.statusCode == 200) {
@@ -276,11 +255,6 @@ class ApiService {
     return [];
   }
 
-<<<<<<< HEAD
-  /// Tạo nhóm. Trả về Map: { 'error': String? , 'id': String? }.
-  /// error == null nghĩa là thành công.
-  Future<Map<String, String?>> createGroup(GroupModel group) async {
-=======
   Future<GroupModel?> getGroupById(String id) async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/groups/$id'));
@@ -293,8 +267,9 @@ class ApiService {
     return null;
   }
 
-  Future<bool> createGroup(GroupModel group) async {
->>>>>>> phuong
+  /// Tạo nhóm. Trả về Map: { 'error': String? , 'id': String? }.
+  /// error == null nghĩa là thành công.
+  Future<Map<String, String?>> createGroup(GroupModel group) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/groups'),
@@ -331,11 +306,6 @@ class ApiService {
     }
   }
 
-<<<<<<< HEAD
-  /// Gửi yêu cầu gia nhập nhóm.
-  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi từ backend nếu thất bại.
-  Future<String?> joinGroup(String groupId, String userId) async {
-=======
   Future<bool> deleteGroup(String id) async {
     try {
       final response = await http.delete(Uri.parse('$baseUrl/groups/$id'));
@@ -346,8 +316,9 @@ class ApiService {
     }
   }
 
-  Future<bool> joinGroup(String groupId, String userId) async {
->>>>>>> phuong
+  /// Gửi yêu cầu gia nhập nhóm.
+  /// Trả về null nếu thành công, hoặc chuỗi thông báo lỗi từ backend nếu thất bại.
+  Future<String?> joinGroup(String groupId, String userId) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/groups/$groupId/join'),
