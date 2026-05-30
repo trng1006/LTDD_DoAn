@@ -10,70 +10,52 @@ class GroupProvider with ChangeNotifier {
   List<GroupModel> get groups => _groups;
   bool get isLoading => _isLoading;
 
-  /// Nhóm mà [userId] đang tham gia (member hoặc pending) trong [courseId], nếu có.
-  GroupModel? groupOfUserInCourse(String userId, String courseId) {
-    for (final g in _groups) {
-      if (g.courseId == courseId &&
-          (g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId))) {
-        return g;
-      }
-    }
-    return null;
-  }
-
-  /// Kiểm tra [userId] đã thuộc nhóm nào (bất kỳ môn) chưa.
-  bool isInAnyGroup(String userId) {
-    return _groups.any((g) =>
-        g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId));
-  }
-
   GroupProvider() {
     fetchGroups();
   }
 
-  Future<void> fetchGroups() async {
+  Future<void> fetchGroups({String? courseId}) async {
     _isLoading = true;
     notifyListeners();
-    _groups = await _apiService.getGroups();
+    _groups = await _apiService.getGroups(courseId: courseId);
     _isLoading = false;
     notifyListeners();
   }
 
-  /// Tìm nhóm theo môn học và/hoặc từ khoá (dùng cho màn hình Tham gia nhóm).
-  /// Trả về danh sách trực tiếp, không ghi đè state của trang chủ.
-  Future<List<GroupModel>> searchGroups({String? courseId, String? search}) async {
-    return _apiService.getGroups(courseId: courseId, search: search);
-  }
-
-  /// Tạo nhóm. Trả về null nếu thành công, hoặc thông báo lỗi từ backend.
-  Future<String?> createGroup(String name, String description, String courseId, int maxMembers, String leaderId, String? topicId) async {
+  Future<String?> createGroup(
+    String name,
+    String description,
+    String courseId,
+    int maxMembers,
+    String leaderId,
+    String? topicId,
+  ) async {
     _isLoading = true;
     notifyListeners();
-    
+
     final newGroup = GroupModel(
-      id: '', // Will be assigned by backend
+      id: '',
       name: name,
       description: description,
-      courseId: courseId,
       maxMembers: maxMembers,
       memberIds: [leaderId],
       pendingMemberIds: [],
       leaderId: leaderId,
       topicId: topicId,
+      courseId: courseId,
     );
-    
+
     final result = await _apiService.createGroup(newGroup);
-    final error = result['error'];
-    if (error == null) {
-      await fetchGroups();
-    }
-    
     _isLoading = false;
     notifyListeners();
-    return error;
+
+    if (result['error'] == null) {
+      await fetchGroups(courseId: courseId);
+      return null;
+    }
+    return result['error'];
   }
 
-  /// Gửi yêu cầu gia nhập. Trả về null nếu thành công, hoặc thông báo lỗi.
   Future<String?> requestToJoin(String groupId, String userId) async {
     final error = await _apiService.joinGroup(groupId, userId);
     if (error == null) {
@@ -84,59 +66,64 @@ class GroupProvider with ChangeNotifier {
 
   Future<void> acceptMember(String groupId, String userId) async {
     bool success = await _apiService.approveMember(groupId, userId);
-    if (success) {
-      await fetchGroups();
-    }
+    if (success) await fetchGroups();
   }
 
   Future<void> rejectMember(String groupId, String userId) async {
-    // In our backend, rejecting a join request is same as removing the pending member
     bool success = await _apiService.removeMember(groupId, userId);
-    if (success) {
-      await fetchGroups();
-    }
+    if (success) await fetchGroups();
   }
 
   Future<void> removeMember(String groupId, String userId) async {
     bool success = await _apiService.removeMember(groupId, userId);
-    if (success) {
-      await fetchGroups();
-    }
-  }
-
-  /// Trưởng nhóm đăng ký đề tài. Trả về null nếu thành công, hoặc thông báo lỗi.
-  Future<String?> registerTopic(String groupId, String topicId, String leaderId) async {
-    final error = await _apiService.registerTopic(groupId, topicId, leaderId);
-    if (error == null) {
-      await fetchGroups();
-    }
-    return error;
+    if (success) await fetchGroups();
   }
 
   Future<void> updateGroupStatus(String groupId, String status, {bool? isLocked}) async {
     final group = _groups.firstWhere((g) => g.id == groupId);
     final updatedGroup = group.copyWith(status: status, isLocked: isLocked);
-    
     bool success = await _apiService.updateGroup(updatedGroup);
-    if (success) {
-      await fetchGroups();
-    }
+    if (success) await fetchGroups();
   }
 
   Future<void> updateGroupSize(String groupId, int size) async {
     final group = _groups.firstWhere((g) => g.id == groupId);
     final updatedGroup = group.copyWith(maxMembers: size);
-    
     bool success = await _apiService.updateGroup(updatedGroup);
-    if (success) {
-      await fetchGroups();
-    }
+    if (success) await fetchGroups();
   }
 
   Future<void> updateGroup(GroupModel group) async {
     bool success = await _apiService.updateGroup(group);
-    if (success) {
-      await fetchGroups();
+    if (success) await fetchGroups();
+  }
+
+  GroupModel? groupOfUserInCourse(String userId, String courseId) {
+    try {
+      return _groups.firstWhere((g) => g.memberIds.contains(userId));
+    } catch (_) {
+      return null;
     }
+  }
+
+  bool isInAnyGroup(String userId) {
+    return _groups.any((g) => g.memberIds.contains(userId));
+  }
+
+  Future<List<GroupModel>> searchGroups({String? search, String? courseId}) async {
+    _isLoading = true;
+    notifyListeners();
+    final results = await _apiService.getGroups(
+      search: search,
+      courseId: courseId,
+    );
+    _groups = results;
+    _isLoading = false;
+    notifyListeners();
+    return results;
+  }
+
+  Future<String?> registerTopic(String groupId, String topicId, String leaderId) async {
+    return await _apiService.registerTopic(groupId, topicId, leaderId);
   }
 }
