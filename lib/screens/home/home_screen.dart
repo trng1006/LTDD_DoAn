@@ -5,6 +5,7 @@ import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/core/constants/app_routes.dart';
 import '../../providers/course_provider.dart';
 import '../../models/group_model.dart';
+import '../admin/manage_courses_screen.dart'; // ĐÃ THÊM DÒNG NÀY ĐỂ NHẬN TRANG MÔN HỌC
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -91,7 +92,7 @@ class HomeScreen extends StatelessWidget {
                     'Quản lý thành viên (${group.memberIds.length} TV)${isLeader ? ' - Trưởng nhóm' : ''}',
                     Icons.groups_rounded,
                     Colors.indigo,
-                    () => Navigator.pushNamed(context, AppRoutes.manageGroup), // Should probably pass group to detail screen
+                    () => Navigator.pushNamed(context, AppRoutes.manageGroup),
                   );
                 }),
                 const SizedBox(height: 16),
@@ -159,6 +160,18 @@ class HomeScreen extends StatelessWidget {
                 Icons.people_alt_rounded,
                 Colors.blueAccent,
                 () => Navigator.pushNamed(context, AppRoutes.manageUsers),
+              ),
+              // ĐÃ THÊM NÚT QUẢN LÝ ĐÀO TẠO Ở ĐÂY
+              _buildActionCard(
+                context,
+                'Quản lý Đào tạo',
+                'Thêm, sửa, xóa Học kỳ và Môn học',
+                Icons.menu_book_rounded,
+                Colors.green,
+                () => Navigator.push(
+                  context, 
+                  MaterialPageRoute(builder: (_) => const ManageCoursesScreen())
+                ),
               ),
               _buildActionCard(
                 context,
@@ -298,10 +311,9 @@ class HomeScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
                 child: Icon(icon, color: color, size: 28),
               ),
-
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

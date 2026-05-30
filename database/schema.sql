@@ -296,3 +296,19 @@ INSERT INTO `group_members` (`group_id`, `user_id`, `status`) VALUES
 (1, 'sv01', 'member'),
 (1, 'sv02', 'member'),
 (1, 'sv03', 'member');
+
+# Các nhóm và thành viên khác có thể được thêm vào sau khi đề tài được duyệt và trong thời gian đăng ký.
+-- Tạo bảng lưu cấu hình hệ thống
+CREATE TABLE IF NOT EXISTS `system_settings` (
+    `key_name` VARCHAR(50) PRIMARY KEY,
+    `value` VARCHAR(255) NOT NULL,
+    `description` VARCHAR(255),
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Chèn dữ liệu cấu hình mặc định ban đầu (Seed data)
+REPLACE INTO `system_settings` (`key_name`, `value`, `description`) VALUES 
+('registration_start', '2026-05-01', 'Ngày bắt đầu đăng ký đề tài'),
+('registration_end', '2026-06-30', 'Ngày kết thúc đăng ký đề tài'),
+('min_members', '3', 'Số thành viên tối thiểu trong một nhóm'),
+('max_members', '5', 'Số thành viên tối đa trong một nhóm');

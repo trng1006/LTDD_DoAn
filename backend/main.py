@@ -4,9 +4,19 @@ from pydantic import BaseModel
 import json
 from database import get_db_connection
 import mysql.connector
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Hệ thống Đăng ký Đề tài API")
 
+# --- THÊM ĐOẠN CODE CẤP QUYỀN CORS NÀY VÀO ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Cho phép mọi ứng dụng Web kết nối tới
+    allow_credentials=True,
+    allow_methods=["*"],  # Cho phép GET, POST, PUT, DELETE
+    allow_headers=["*"],
+)
+# ---------------------------------------------
 # --- Models ---
 
 class UserBase(BaseModel):
@@ -46,6 +56,24 @@ class GroupBase(BaseModel):
 class LoginRequest(BaseModel):
     identity: str
     password: str
+
+# Admin Dashboard Settings Update Model
+class SystemSettingsUpdate(BaseModel):
+    registration_start: str
+    registration_end: str
+    min_members: int
+    max_members: int
+# Semesterbase dùng để hiển thị thông tin học kỳ hiện tại trong profile người dùng và dropdown chọn học kỳ khi tạo/cập nhật khóa học
+class SemesterBase(BaseModel):
+    id: str
+    name: str
+    isActive: bool = False
+# CourseBase dùng để hiển thị thông tin khóa học trong profile người dùng và dropdown chọn khóa học khi tạo/cập nhật đề tài, nhóm
+class CourseBase(BaseModel):
+    id: str
+    name: str
+    code: str
+    semesterId: Optional[str] = None
 
 # --- Helper Mappings ---
 
@@ -264,6 +292,92 @@ def get_semesters():
     conn.close()
     return semesters
 
+# --- API Quản lý Học kỳ ---
+@app.post("/semesters")
+def create_semester(sem: SemesterBase):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        # Nếu set isActive = True, tự động tắt các học kỳ khác
+        if sem.isActive:
+            cursor.execute("UPDATE semesters SET is_active = FALSE")
+            
+        cursor.execute("INSERT INTO semesters (id, name, is_active) VALUES (%s, %s, %s)", 
+                       (sem.id, sem.name, sem.isActive))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return sem
+    except Exception as e:
+        if conn and conn.is_connected(): conn.rollback(); conn.close()
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.put("/semesters/{sem_id}/toggle-active")
+def toggle_semester_active(sem_id: str):
+    """Bật học kỳ này làm học kỳ hiện tại, tắt tất cả các học kỳ khác"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        conn.start_transaction()
+        cursor.execute("UPDATE semesters SET is_active = FALSE")
+        cursor.execute("UPDATE semesters SET is_active = TRUE WHERE id = %s", (sem_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": "Đã cập nhật học kỳ hiện tại."}
+    except Exception as e:
+        if conn and conn.is_connected(): conn.rollback(); conn.close()
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/semesters/{sem_id}")
+def delete_semester(sem_id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM semesters WHERE id = %s", (sem_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"message": "Đã xóa học kỳ."}
+
+# --- API Quản lý Môn học ---
+@app.get("/courses")
+def get_courses(semester_id: Optional[str] = None):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    if semester_id:
+        cursor.execute("SELECT * FROM courses WHERE semester_id = %s", (semester_id,))
+    else:
+        cursor.execute("SELECT * FROM courses")
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return [{"id": r["id"], "name": r["name"], "code": r["code"], "semesterId": r["semester_id"]} for r in rows]
+
+@app.post("/courses")
+def create_course(course: CourseBase):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO courses (id, name, code, semester_id) VALUES (%s, %s, %s, %s)", 
+                       (course.id, course.name, course.code, course.semesterId))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return course
+    except Exception as e:
+        if conn and conn.is_connected(): conn.rollback(); conn.close()
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/courses/{course_id}")
+def delete_course(course_id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM courses WHERE id = %s", (course_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"message": "Đã xóa môn học."}
+
 # --- Topic Routes ---
 
 @app.get("/topics")
@@ -435,6 +549,85 @@ def remove_member(group_id: int, user_id: str):
     conn.close()
     return {"message": "Member removed"}
 
+# --- Admin Dashboard Stats ---
+@app.get("/admin/dashboard-stats")
+def get_dashboard_stats():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Đếm sinh viên
+    cursor.execute("SELECT COUNT(*) as total FROM users WHERE role = 'student'")
+    students_count = cursor.fetchone()['total']
+    
+    # Đếm đề tài
+    cursor.execute("SELECT COUNT(*) as total FROM topics")
+    topics_count = cursor.fetchone()['total']
+    
+    # Đếm nhóm
+    cursor.execute("SELECT COUNT(*) as total FROM `groups`")
+    groups_count = cursor.fetchone()['total']
+    
+    # Đếm nhóm chờ duyệt (status = 'pending_approval' hoặc 'creating')
+    cursor.execute("SELECT COUNT(*) as total FROM `groups` WHERE status != 'approved'")
+    pending_groups = cursor.fetchone()['total']
+    
+    cursor.close()
+    conn.close()
+    
+    return {
+        "students": students_count,
+        "topics": topics_count,
+        "groups": groups_count,
+        "pendingGroups": pending_groups
+    }
+@app.get("/settings")
+def get_system_settings():
+    """Lấy toàn bộ cấu hình hệ thống dưới dạng một object duy nhất"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT key_name, value FROM system_settings")
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        # Chuyển đổi danh sách dòng thành key-value object để FE dễ xử lý
+        settings_dict = {row["key_name"]: row["value"] for row in rows}
+        return settings_dict
+    except Exception as e:
+        if conn and conn.is_connected(): conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Cập nhật cấu hình hệ thống (Admin) - Cập nhật hàng loạt các key tương ứng trong một transaction duy nhất
+@app.put("/settings")
+def update_system_settings(settings: SystemSettingsUpdate):
+    """Cập nhật các tham số cấu hình hệ thống (Chỉ dành cho Admin)"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = conn.cursor()
+        conn.start_transaction()
+        
+        # Câu lệnh cập nhật hàng loạt các key tương ứng
+        update_query = "UPDATE system_settings SET value = %s WHERE key_name = %s"
+        
+        cursor.execute(update_query, (settings.registration_start, 'registration_start'))
+        cursor.execute(update_query, (settings.registration_end, 'registration_end'))
+        cursor.execute(update_query, (str(settings.min_members), 'min_members'))
+        cursor.execute(update_query, (str(settings.max_members), 'max_members'))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": "Cấu hình hệ thống đã được cập nhật thành công."}
+    except Exception as e:
+        if conn and conn.is_connected():
+            conn.rollback()
+            conn.close()
+        raise HTTPException(status_code=400, detail=str(e))
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/auth_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/providers/topic_provider.dart';
+import 'package:ungdungdangkinhomvachondetai/providers/setting_provider.dart';
 import 'package:ungdungdangkinhomvachondetai/routes/app_pages.dart';
 import 'package:ungdungdangkinhomvachondetai/core/theme/app_theme.dart';
 
@@ -21,6 +22,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => TopicProvider()),
         ChangeNotifierProvider(create: (_) => CourseProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => SettingProvider()),
       ],
       child: const MyApp(),
     ),
