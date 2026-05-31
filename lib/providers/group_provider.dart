@@ -21,6 +21,17 @@ class GroupProvider with ChangeNotifier {
     return null;
   }
 
+  /// Nhóm mà [userId] làm TRƯỞNG NHÓM trong [courseId], nếu có.
+  /// Dùng cho màn Chọn đề tài: chỉ trưởng nhóm mới đăng ký, và phải đúng nhóm của môn đó.
+  GroupModel? leaderGroupInCourse(String userId, String courseId) {
+    for (final g in _groups) {
+      if (g.courseId == courseId && g.leaderId == userId) {
+        return g;
+      }
+    }
+    return null;
+  }
+
   /// Kiểm tra [userId] đã thuộc nhóm nào (bất kỳ môn) chưa.
   bool isInAnyGroup(String userId) {
     return _groups.any((g) =>
