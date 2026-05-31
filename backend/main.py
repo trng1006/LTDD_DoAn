@@ -510,3 +510,56 @@ def get_dashboard_stats():
         "approvedGroups": approved_groups,
         "topics": topics_count
     }
+
+# --- API Lấy Dữ Liệu Thống Kê Cho Dashboard ---
+@app.get("/admin/statistics")
+def get_detailed_statistics():
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = conn.cursor(dictionary=True)
+        
+        # 1. Thống kê Tổng số nhóm
+        cursor.execute("SELECT COUNT(*) as total FROM `groups`")
+        total_groups = cursor.fetchone()['total']
+        
+        # 2. Thống kê Số nhóm đã chốt/đăng ký đề tài thành công (trường topic_id không null)
+        cursor.execute("SELECT COUNT(*) as total FROM `groups` WHERE topic_id IS NOT NULL")
+        groups_with_topic = cursor.fetchone()['total']
+        
+        # 3. Thống kê Tổng số đề tài hiện có
+        cursor.execute("SELECT COUNT(*) as total FROM topics")
+        total_topics = cursor.fetchone()['total']
+        
+        # 4. Thống kê Số đề tài trống (Chưa có bất kỳ nhóm nào đăng ký chọn)
+        cursor.execute("""
+            SELECT COUNT(*) as total FROM topics t 
+            WHERE t.id NOT IN (SELECT DISTINCT topic_id FROM `groups` WHERE topic_id IS NOT NULL)
+        """)
+        unregistered_topics = cursor.fetchone()['total']
+        
+        # 5. Lấy danh sách Top các đề tài được quan tâm nhiều nhất (Xếp hạng theo số lượng nhóm đăng ký)
+        cursor.execute("""
+            SELECT t.title, COUNT(g.id) as group_count 
+            FROM topics t 
+            LEFT JOIN `groups` g ON t.id = g.topic_id 
+            GROUP BY t.id, t.title 
+            ORDER BY group_count DESC 
+            LIMIT 5
+        """)
+        top_topics = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "totalGroups": total_groups,
+            "groupsWithTopic": groups_with_topic,
+            "totalTopics": total_topics,
+            "unregisteredTopics": unregistered_topics,
+            "topTopics": [{"name": r["title"], "count": r["group_count"]} for r in top_topics]
+        }
+    except Exception as e:
+        if conn and conn.is_connected(): conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
