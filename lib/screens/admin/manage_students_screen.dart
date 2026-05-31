@@ -13,6 +13,10 @@ class ManageStudentsScreen extends StatefulWidget {
 
 class _ManageStudentsScreenState extends State<ManageStudentsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  
+  // Các biến trạng thái phục vụ Tìm kiếm và Sắp xếp
+  String _searchQuery = '';
+  String _sortBy = 'name_asc'; // Các giá trị: 'name_asc', 'name_desc', 'identity_asc'
 
   @override
   void initState() {
@@ -35,6 +39,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
     final userProvider = context.watch<UserProvider>();
     final courseProvider = context.watch<CourseProvider>();
     
+    // Tách danh sách gốc
     final students = userProvider.users.where((u) => u.role == 'student').toList();
     final lecturers = userProvider.users.where((u) => u.role == 'lecturer').toList();
 
@@ -43,9 +48,17 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
         title: const Text('Quản lý Người dùng'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.school), text: 'Sinh viên'),
-            Tab(icon: Icon(Icons.person), text: 'Giảng viên'),
+          tabs: [
+            // BỔ SUNG: Hiển thị số lượng sinh viên hiện tại ngay trên Tab tuyển chọn
+            Tab(
+              icon: const Icon(Icons.school), 
+              text: 'Sinh viên (${students.length})',
+            ),
+            // BỔ SUNG: Hiển thị số lượng giảng viên hiện tại
+            Tab(
+              icon: const Icon(Icons.person), 
+              text: 'Giảng viên (${lecturers.length})',
+            ),
           ],
         ),
         actions: [
@@ -72,56 +85,139 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
   }
 
   Widget _buildUserList(BuildContext context, List<UserModel> users, CourseProvider courseProvider, UserProvider userProvider) {
-    if (users.isEmpty) return const Center(child: Text('Không có người dùng nào.'));
+    // 1. Thực hiện TÌM KIẾM dựa trên từ khóa (Tên, Email hoặc Mã số)
+    final filteredUsers = users.where((u) {
+      final query = _searchQuery.toLowerCase();
+      final matchName = u.name.toLowerCase().contains(query);
+      final matchEmail = u.email.toLowerCase().contains(query);
+      final matchIdentity = (u.identity ?? '').toLowerCase().contains(query);
+      return matchName || matchEmail || matchIdentity;
+    }).toList();
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: users.length,
-      itemBuilder: (context, index) {
-        final user = users[index];
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: user.role == 'student' ? Colors.blue.shade100 : Colors.orange.shade100,
-              child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
-            ),
-            title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Email: ${user.email}'),
-                Text('Mã số: ${user.identity ?? "Chưa cập nhật"}', style: const TextStyle(color: Colors.grey)),
-                if (user.role == 'student')
-                  Padding(
-                    padding: const EdgeInsets.top(4.0),
-                    child: Text(
-                      'Học kỳ hiện tại: ${courseProvider.getSemesterName(user.currentSemesterId)}',
-                      style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+    // 2. Thực hiện SẮP XẾP theo tiêu chí đã chọn
+    if (_sortBy == 'name_asc') {
+      filteredUsers.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else if (_sortBy == 'name_desc') {
+      filteredUsers.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+    } else if (_sortBy == 'identity_asc') {
+      filteredUsers.sort((a, b) => (a.identity ?? '').compareTo(b.identity ?? ''));
+    }
+
+    return Column(
+      children: [
+        // BỔ SUNG: Thanh công cụ Tìm kiếm và Bộ Sắp xếp ở trên đầu danh sách
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: [
+              // Ô tìm kiếm thông tin
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Tìm kiếm tên, email, mã số...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (user.role == 'student')
-                  IconButton(
-                    icon: const Icon(Icons.calendar_month, color: Colors.blue),
-                    tooltip: 'Xếp Học kỳ cho sinh viên',
-                    onPressed: () => _showSemesterDialog(context, user, courseProvider, userProvider),
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-                  tooltip: 'Xóa tài khoản',
-                  onPressed: () => _showDeleteConfirmDialog(context, user, userProvider),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              // Nút Menu lựa chọn kiểu Sắp xếp
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: PopupMenuButton<String>(
+                  icon: const Icon(Icons.sort, color: Colors.blue),
+                  tooltip: 'Sắp xếp danh sách',
+                  onSelected: (value) {
+                    setState(() {
+                      _sortBy = value;
+                    });
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'name_asc', 
+                      child: Row(children: [Icon(Icons.sort_by_alpha), SizedBox(width: 8), Text('Tên: A -> Z')]),
+                    ),
+                    const PopupMenuItem(
+                      value: 'name_desc', 
+                      child: Row(children: [Icon(Icons.sort_by_alpha), SizedBox(width: 8), Text('Tên: Z -> A')]),
+                    ),
+                    const PopupMenuItem(
+                      value: 'identity_asc', 
+                      child: Row(children: [Icon(Icons.pin), SizedBox(width: 8), Text('Mã số tăng dần')]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+        
+        // Hiển thị danh sách kết quả sau khi lọc và xếp
+        Expanded(
+          child: filteredUsers.isEmpty
+              ? const Center(child: Text('Không tìm thấy thành viên nào phù hợp.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredUsers.length,
+                  itemBuilder: (context, index) {
+                    final user = filteredUsers[index];
+                    return Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: user.role == 'student' ? Colors.blue.shade100 : Colors.orange.shade100,
+                          child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
+                        ),
+                        title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Email: ${user.email}'),
+                            Text('Mã số: ${user.identity ?? "Chưa cập nhật"}', style: const TextStyle(color: Colors.grey)),
+                            if (user.role == 'student')
+                              Padding(
+                                padding: const EdgeInsets.top(4.0),
+                                child: Text(
+                                  'Học kỳ hiện tại: ${courseProvider.getSemesterName(user.currentSemesterId)}',
+                                  style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (user.role == 'student')
+                              IconButton(
+                                icon: const Icon(Icons.calendar_month, color: Colors.blue),
+                                tooltip: 'Xếp Học kỳ cho sinh viên',
+                                onPressed: () => _showSemesterDialog(context, user, courseProvider, userProvider),
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+                              tooltip: 'Xóa tài khoản',
+                              onPressed: () => _showDeleteConfirmDialog(context, user, userProvider),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -234,8 +330,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
       ),
     );
   }
-
-  // --- MỚI: Chọn học kỳ thay vì chọn môn học cho sinh viên ---
+// --- MỚI: Chọn học kỳ thay vì chọn môn học cho sinh viên ---
   void _showSemesterDialog(BuildContext context, UserModel student, CourseProvider courseProvider, UserProvider userProvider) {
     String? selectedSemesterId = student.currentSemesterId;
 
