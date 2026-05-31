@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ungdungdangkinhomvachondetai/models/group_model.dart';
-import 'package:ungdungdangkinhomvachondetai/models/topic_model.dart';
-import 'package:ungdungdangkinhomvachondetai/providers/auth_provider.dart';
-import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
-import 'package:ungdungdangkinhomvachondetai/providers/topic_provider.dart';
-import 'package:ungdungdangkinhomvachondetai/screens/group/create_group_screen.dart';
-import 'package:ungdungdangkinhomvachondetai/screens/group/group_detail_screen.dart';
+
+import '../../models/group_model.dart';
+import '../../models/topic_model.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/group_provider.dart';
+import '../../providers/topic_provider.dart';
+import 'create_group_screen.dart';
+import 'group_detail_screen.dart';
 
 class ManageGroupScreen extends StatefulWidget {
   const ManageGroupScreen({super.key});
@@ -19,19 +20,15 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
-  }
-
-  Future<void> _reload() async {
-    final user = context.read<AuthProvider>().user;
-    if (user == null) return;
-    if (user.role == 'lecturer') {
-      await context.read<TopicProvider>().fetchTopics(lecturerId: user.id);
-      if (!mounted) return;
-      await context.read<GroupProvider>().fetchGroups(lecturerId: user.id);
-    } else {
-      await context.read<GroupProvider>().fetchGroups();
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthProvider>().user;
+      if (user?.role == 'lecturer') {
+        context.read<TopicProvider>().fetchTopics(lecturerId: user!.id);
+        context.read<GroupProvider>().fetchGroups(lecturerId: user.id);
+      } else {
+        context.read<GroupProvider>().fetchGroups();
+      }
+    });
   }
 
   @override
@@ -89,34 +86,30 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
       appBar: AppBar(
         title: const Text('Duyệt nhóm đăng ký'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _reload),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              topicProvider.fetchTopics(lecturerId: lecturerId);
+              groupProvider.fetchGroups(lecturerId: lecturerId);
+            },
+          ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _reload,
-        child: groupProvider.isLoading && groups.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : groups.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 220),
-                  Center(
-                    child: Text('Chưa có nhóm nào đăng ký đề tài của bạn.'),
-                  ),
-                ],
-              )
-            : ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                itemCount: groups.length,
-                itemBuilder: (context, index) {
-                  final group = groups[index];
-                  final topic = _topicOf(topicProvider.topics, group.topicId);
-                  return _lecturerGroupCard(context, group, topic, lecturerId);
-                },
-              ),
-      ),
+      body: groupProvider.isLoading && groups.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : groups.isEmpty
+          ? const Center(
+              child: Text('Chưa có nhóm nào đăng ký đề tài của bạn.'),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: groups.length,
+              itemBuilder: (context, index) {
+                final group = groups[index];
+                final topic = _topicOf(topicProvider.topics, group.topicId);
+                return _lecturerGroupCard(context, group, topic, lecturerId);
+              },
+            ),
     );
   }
 
@@ -154,7 +147,7 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
                     Text(topic?.title ?? 'Không rõ đề tài'),
                     const SizedBox(height: 2),
                     Text(
-                      '${group.memberIds.length}/${group.maxMembers} thành viên - Trưởng nhóm: ${group.leaderId}',
+                      '${group.memberIds.length}/${group.maxMembers} thành viên • Trưởng nhóm: ${group.leaderId}',
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -216,7 +209,7 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
     GroupProvider groupProvider,
   ) {
     final myGroups = groupProvider.groups
-        .where((group) => group.memberIds.contains(userId))
+        .where((g) => g.memberIds.contains(userId))
         .toList();
 
     return Scaffold(

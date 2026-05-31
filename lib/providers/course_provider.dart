@@ -14,18 +14,67 @@ class CourseProvider with ChangeNotifier {
   ];
 
   List<CourseModel> _courses = [
-    CourseModel(id: 'c1', name: 'Deep learning', code: '0101101956', semesterId: 's6'),
-    CourseModel(id: 'c2', name: 'Thực hành deep learning', code: '0101101957', semesterId: 's6'),
-    CourseModel(id: 'c3', name: 'Lập trình di động', code: '0101101969', semesterId: 's6'),
-    CourseModel(id: 'c4', name: 'Khai phá dữ liệu', code: '0101101970', semesterId: 's6'),
-    CourseModel(id: 'c5', name: 'Quản trị hệ thống mạng', code: '0101101973', semesterId: 's6'),
-    CourseModel(id: 'c6', name: 'Thực hành quản trị hệ thống mạng', code: '0101101974', semesterId: 's6'),
-    CourseModel(id: 'c7', name: 'Phân tích thiết kế hệ thống', code: '0101101976', semesterId: 's6'),
-    CourseModel(id: 'c8', name: 'Thực hành phân tích thiết kế hệ thống', code: '0101101977', semesterId: 's6'),
-    CourseModel(id: 'c9', name: 'Công nghệ Java', code: '0101101980', semesterId: 's6'),
+    CourseModel(
+      id: 'c1',
+      name: 'Deep learning',
+      code: '0101101956',
+      semesterId: 's6',
+    ),
+    CourseModel(
+      id: 'c2',
+      name: 'Thực hành deep learning',
+      code: '0101101957',
+      semesterId: 's6',
+    ),
+    CourseModel(
+      id: 'c3',
+      name: 'Lập trình di động',
+      code: '0101101969',
+      semesterId: 's6',
+    ),
+    CourseModel(
+      id: 'c4',
+      name: 'Khai phá dữ liệu',
+      code: '0101101970',
+      semesterId: 's6',
+    ),
+    CourseModel(
+      id: 'c5',
+      name: 'Quản trị hệ thống mạng',
+      code: '0101101973',
+      semesterId: 's6',
+    ),
+    CourseModel(
+      id: 'c6',
+      name: 'Thực hành quản trị hệ thống mạng',
+      code: '0101101974',
+      semesterId: 's6',
+    ),
+    CourseModel(
+      id: 'c7',
+      name: 'Phân tích thiết kế hệ thống',
+      code: '0101101976',
+      semesterId: 's6',
+    ),
+    CourseModel(
+      id: 'c8',
+      name: 'Thực hành phân tích thiết kế hệ thống',
+      code: '0101101977',
+      semesterId: 's6',
+    ),
+    CourseModel(
+      id: 'c9',
+      name: 'Công nghệ Java',
+      code: '0101101980',
+      semesterId: 's6',
+    ),
   ];
 
   bool isLoading = false;
+
+  CourseProvider() {
+    fetchAllData();
+  }
 
   List<CourseModel> get courses => _courses;
   List<SemesterModel> get semesters => _semesters;
@@ -43,9 +92,15 @@ class CourseProvider with ChangeNotifier {
   }
 
   void ensureDefaultCourse(List<String> enrolledCourseIds) {
-    if (_selectedCourseId != null) return;
+    if (_selectedCourseId != null &&
+        enrolledCourseIds.contains(_selectedCourseId)) {
+      return;
+    }
     if (enrolledCourseIds.isNotEmpty) {
       _selectedCourseId = enrolledCourseIds.first;
+      notifyListeners();
+    } else if (_selectedCourseId != null) {
+      _selectedCourseId = null;
       notifyListeners();
     }
   }
@@ -96,11 +151,15 @@ class CourseProvider with ChangeNotifier {
       final response = await http.get(Uri.parse('$_baseUrl/semesters'));
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
-        _semesters = data.map((json) => SemesterModel(
-          id: json['id'],
-          name: json['name'],
-          isActive: json['isActive'],
-        )).toList();
+        _semesters = data
+            .map(
+              (json) => SemesterModel(
+                id: json['id'],
+                name: json['name'],
+                isActive: json['isActive'],
+              ),
+            )
+            .toList();
         notifyListeners();
       }
     } catch (e) {
@@ -113,12 +172,16 @@ class CourseProvider with ChangeNotifier {
       final response = await http.get(Uri.parse('$_baseUrl/courses'));
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
-        _courses = data.map((json) => CourseModel(
-          id: json['id'],
-          name: json['name'],
-          code: json['code'],
-          semesterId: json['semesterId'],
-        )).toList();
+        _courses = data
+            .map(
+              (json) => CourseModel(
+                id: json['id'],
+                name: json['name'],
+                code: json['code'],
+                semesterId: json['semesterId'],
+              ),
+            )
+            .toList();
         notifyListeners();
       }
     } catch (e) {
@@ -140,7 +203,9 @@ class CourseProvider with ChangeNotifier {
   }
 
   Future<bool> setSemesterActive(String id) async {
-    final response = await http.put(Uri.parse('$_baseUrl/semesters/$id/toggle-active'));
+    final response = await http.put(
+      Uri.parse('$_baseUrl/semesters/$id/toggle-active'),
+    );
     if (response.statusCode == 200) {
       await fetchSemesters();
       return true;
@@ -148,11 +213,21 @@ class CourseProvider with ChangeNotifier {
     return false;
   }
 
-  Future<bool> addCourse(String id, String name, String code, String? semesterId) async {
+  Future<bool> addCourse(
+    String id,
+    String name,
+    String code,
+    String? semesterId,
+  ) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/courses'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'id': id, 'name': name, 'code': code, 'semesterId': semesterId}),
+      body: jsonEncode({
+        'id': id,
+        'name': name,
+        'code': code,
+        'semesterId': semesterId,
+      }),
     );
     if (response.statusCode == 200) {
       await fetchCourses();

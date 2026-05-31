@@ -23,23 +23,9 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
   List<TopicModel> _topics = [];
   String? _selectedTopicId;
 
-  /// Môn học đang xem trên màn hình. Mặc định focus theo lớp đã chọn bên ngoài
-  /// ([CourseProvider.selectedCourseId]); nếu chưa có thì dùng môn của nhóm.
-  late String _courseId;
-
-  /// ID người dùng hiện tại (trưởng nhóm).
-  String _userId = '';
-
-  /// Nhóm mà người dùng làm trưởng trong [_courseId] đang xem.
-  /// Đăng ký đề tài sẽ tác động lên đúng nhóm này, không nhảy sang nhóm môn khác.
-  GroupModel? _activeGroup;
-
-  /// Người dùng có ở trong nhóm nào đó của môn đang xem nhưng KHÔNG phải trưởng.
-  bool _isMemberNotLeader = false;
-
-  /// Nhóm hiện tại đã có đề tài hay chưa (để đổi nhãn "Chọn"/"Đổi").
+  /// Nhóm đã có đề tài từ trước hay chưa (để đổi nhãn "Chọn"/"Đổi").
   bool get _hasTopic =>
-      _activeGroup?.topicId != null && _activeGroup!.topicId!.isNotEmpty;
+      widget.group.topicId != null && widget.group.topicId!.isNotEmpty;
 
   // Bảng màu + icon Lucide gán luân phiên cho từng đề tài để giống mẫu.
   static const List<_TopicStyle> _styles = [
@@ -86,9 +72,9 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
 
   Future<void> _loadTopics() async {
     setState(() => _isLoading = true);
-    final topics = await context
-        .read<TopicProvider>()
-        .getTopicsByCourse(_courseId);
+    final topics = await context.read<TopicProvider>().getAvailableTopics(
+      courseId: widget.group.courseId,
+    );
     if (!mounted) return;
     setState(() {
       _topics = topics;
@@ -211,7 +197,9 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
     if (widget.group.memberIds.length < widget.group.minMembers) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Nhóm chưa đủ thành viên tối thiểu (${widget.group.memberIds.length}/${widget.group.minMembers}). Vui lòng bổ sung thành viên trước khi đăng ký.'),
+          content: Text(
+            'Nhóm chưa đủ thành viên tối thiểu (${widget.group.memberIds.length}/${widget.group.minMembers}). Vui lòng bổ sung thành viên trước khi đăng ký.',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -220,17 +208,21 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
 
     setState(() => _isSubmitting = true);
     final error = await context.read<GroupProvider>().registerTopic(
-          group.id,
-          _selectedTopicId!,
-          _userId,
-        );
+      widget.group.id,
+      _selectedTopicId!,
+      user.id,
+    );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     if (error == null) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(_hasTopic ? 'Đổi đề tài thành công!' : 'Đăng ký đề tài thành công!'),
+          content: Text(
+            _hasTopic
+                ? 'Đã gửi yêu cầu đổi đề tài. Chờ giảng viên duyệt.'
+                : 'Đã gửi yêu cầu đăng ký đề tài. Chờ giảng viên duyệt.',
+          ),
           backgroundColor: const Color(0xFF22C55E),
         ),
       );
@@ -244,7 +236,8 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final courseName = context
+    final courseName =
+        context
             .watch<CourseProvider>()
             .getCourseById(_courseId)
             ?.name ??
@@ -305,7 +298,12 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
     final double topPad = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(8, (topPad > 0 ? topPad : 16) + 8, 16, 28),
+      padding: EdgeInsets.fromLTRB(
+        8,
+        MediaQuery.of(context).padding.top + 8,
+        16,
+        28,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1D6BF3), Color(0xFF2F8BFF)],
@@ -358,7 +356,10 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
                 color: const Color(0xFFEAF1FF),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(LucideIcons.bookMarked, color: Color(0xFF2F6BFF)),
+              child: const Icon(
+                LucideIcons.bookMarked,
+                color: Color(0xFF2F6BFF),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -596,27 +597,20 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
     );
   }
 
-  Widget _buildStatusBadge(TopicModel topic, bool selected) {
-    final bool isFull = topic.currentGroups >= topic.maxGroups;
-    Color bg;
-    Color fg;
-    String text;
-    if (selected) {
-      bg = const Color(0xFFFDE8E8);
-      fg = const Color(0xFFE5484D);
-      text = 'Đã chọn';
-    } else if (isFull) {
-      bg = const Color(0xFFF1F5F9);
-      fg = const Color(0xFF94A3B8);
-      text = 'Đã đầy';
-    } else {
-      bg = const Color(0xFFE9F8EF);
-      fg = const Color(0xFF22A65A);
-      text = 'Còn trống';
-    }
+  Widget _buildStatusBadge(bool selected) {
+    final Color bg = selected
+        ? const Color(0xFFFDE8E8)
+        : const Color(0xFFE9F8EF);
+    final Color fg = selected
+        ? const Color(0xFFE5484D)
+        : const Color(0xFF22A65A);
+    final String text = selected ? 'Đã chọn' : 'Còn trống';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Text(
         text,
         style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600),
@@ -628,7 +622,12 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
     final bool enabled =
         _activeGroup != null && _selectedTopicId != null && !_isSubmitting;
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        MediaQuery.of(context).padding.bottom + 12,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -649,20 +648,30 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
               onPressed: enabled ? _submit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2F6BFF),
-                disabledBackgroundColor: const Color(0xFF2F6BFF).withValues(alpha: 0.4),
+                disabledBackgroundColor: const Color(
+                  0xFF2F6BFF,
+                ).withValues(alpha: 0.4),
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: _isSubmitting
                   ? const SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : Text(
                       _hasTopic ? 'Đổi đề tài' : 'Tiếp tục',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
             ),
           ),

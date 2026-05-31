@@ -39,17 +39,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   void _createGroup() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedCourseId == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Vui lòng chọn môn học')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn môn học')));
         return;
       }
       final groupProvider = context.read<GroupProvider>();
       final userId = context.read<AuthProvider>().user?.id ?? '';
 
       // Chặn sớm ở client: nếu SV đã ở nhóm nào trong môn này thì hiện popup.
-      if (groupProvider.groupOfUserInCourse(userId, _selectedCourseId!) !=
-          null) {
+      if (groupProvider.groupOfUserInCourse(userId, _selectedCourseId!) != null) {
         showAlreadyInGroupDialog(context);
         return;
       }
@@ -66,9 +63,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
       if (!mounted) return;
       if (error == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Tạo nhóm thành công!')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tạo nhóm thành công!')));
         Navigator.pop(context);
       } else {
         // Backend từ chối (vd: đã ở nhóm khác) -> hiện popup.
@@ -82,26 +77,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     final isLoading = context.watch<GroupProvider>().isLoading;
     final user = context.watch<AuthProvider>().user;
     final courses = context.watch<CourseProvider>().courses;
-
+    
     // Only show courses the student is enrolled in
-    final enrolledCourses = courses
-        .where((c) => user?.enrolledCourseIds.contains(c.id) ?? false)
-        .toList();
-    final selectedCourseId =
-        enrolledCourses.any((c) => c.id == _selectedCourseId)
-        ? _selectedCourseId
-        : null;
-    if (_selectedCourseId != selectedCourseId ||
-        (_selectedCourseId == null && enrolledCourses.isNotEmpty)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() {
-          _selectedCourseId =
-              selectedCourseId ??
-              (enrolledCourses.isNotEmpty ? enrolledCourses.first.id : null);
-        });
-      });
-    }
+    final enrolledCourses = courses.where((c) => user?.enrolledCourseIds.contains(c.id) ?? false).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tạo nhóm mới')),
@@ -113,37 +91,29 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
-                key: ValueKey(_selectedCourseId),
                 isExpanded: true,
-                initialValue: selectedCourseId,
+                initialValue: _selectedCourseId,
                 decoration: const InputDecoration(
                   labelText: 'Môn học',
                   border: OutlineInputBorder(),
                 ),
-                items: enrolledCourses
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c.id,
-                        child: Text(c.name, overflow: TextOverflow.ellipsis),
-                      ),
-                    )
-                    .toList(),
+                items: enrolledCourses.map((c) => DropdownMenuItem(
+                  value: c.id,
+                  child: Text(c.name),
+                )).toList(),
                 onChanged: (value) {
                   setState(() {
                     _selectedCourseId = value;
                   });
                 },
-                validator: (value) =>
-                    value == null ? 'Vui lòng chọn môn học' : null,
+                validator: (value) => value == null ? 'Vui lòng chọn môn học' : null,
               ),
               const SizedBox(height: 16),
               CustomTextField(
                 label: 'Tên nhóm',
                 hint: 'Ví dụ: Nhóm 01 - Trí tuệ nhân tạo',
                 controller: _nameController,
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Vui lòng nhập tên nhóm'
-                    : null,
+                validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập tên nhóm' : null,
               ),
               const SizedBox(height: 16),
               CustomTextField(
@@ -152,10 +122,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 controller: _descController,
               ),
               const SizedBox(height: 24),
-              Text(
-                'Số lượng thành viên tối thiểu: $_minMembers',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+              Text('Số lượng thành viên tối thiểu: $_minMembers', style: const TextStyle(fontWeight: FontWeight.bold)),
               Slider(
                 value: _minMembers.toDouble(),
                 min: 1,
@@ -170,10 +137,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              Text(
-                'Số lượng thành viên tối đa: $_maxMembers',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+              Text('Số lượng thành viên tối đa: $_maxMembers', style: const TextStyle(fontWeight: FontWeight.bold)),
               Slider(
                 value: _maxMembers.toDouble(),
                 min: 2,

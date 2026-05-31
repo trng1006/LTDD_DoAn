@@ -103,25 +103,55 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Hàng hiển thị số liệu về Nhóm học tập
-                        Row(
+                        // Metrics Grid
+                        GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 1.4,
                           children: [
-                            _statCard('Tổng số nhóm', '$_totalGroups', Colors.blue),
-                            _statCard('Đã chốt đề tài', '$_groupsWithTopic', Colors.green),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        // Hàng hiển thị số liệu về Đề tài nghiên cứu
-                        Row(
-                          children: [
-                            _statCard('Tổng số đề tài', '$_totalTopics', Colors.orange),
-                            _statCard('Chưa có ai chọn', '$_unregisteredTopics', Colors.red),
+                            _statCard(
+                              'Tổng số nhóm',
+                              '$_totalGroups',
+                              [const Color(0xFF64B5F6), const Color(0xFF1E88E5)],
+                              Icons.groups_rounded,
+                            ),
+                            _statCard(
+                              'Đã chốt đề tài',
+                              '$_groupsWithTopic',
+                              [const Color(0xFF81C784), const Color(0xFF388E3C)],
+                              Icons.assignment_turned_in_rounded,
+                            ),
+                            _statCard(
+                              'Tổng số đề tài',
+                              '$_totalTopics',
+                              [const Color(0xFFFFB74D), const Color(0xFFF57C00)],
+                              Icons.topic_rounded,
+                            ),
+                            _statCard(
+                              'Chưa có ai chọn',
+                              '$_unregisteredTopics',
+                              [const Color(0xFFE57373), const Color(0xFFD32F2F)],
+                              Icons.warning_amber_rounded,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 32),
-                        const Text(
-                          'Top Đề tài được quan tâm nhiều nhất', 
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        Row(
+                          children: [
+                            Icon(Icons.leaderboard_rounded, color: Colors.blue.shade700),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Đề tài được quan tâm nhất',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         
@@ -153,51 +183,164 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _statCard(String title, String value, Color color) {
-    return Expanded(
-      child: Card(
-      // Đổi màu nền của Card theo màu sắc của từng loại số liệu
-        color: color.withValues(alpha: 0.1),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-            ],
-          ),
+  Widget _statCard(String title, String value, List<Color> colors, IconData icon) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: colors.last.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            bottom: -10,
+            child: Icon(
+              icon,
+              size: 80,
+              color: Colors.white.withValues(alpha: 0.15),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(icon, color: Colors.white, size: 24),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _topicStat(String name, int count, int rank) {
-    // Đổi màu sắc Avatar biểu tượng theo thứ hạng top 1, 2, 3
-    Color rankColor = Colors.grey;
-    if (rank == 1) rankColor = Colors.amber;
-    if (rank == 2) rankColor = Colors.blueGrey;
-    if (rank == 3) rankColor = Colors.brown;
+    Color rankColor;
+    IconData? rankIcon;
+    
+    if (rank == 1) {
+      rankColor = const Color(0xFFFFD700);
+      rankIcon = Icons.workspace_premium;
+    } else if (rank == 2) {
+      rankColor = const Color(0xFFC0C0C0);
+    } else if (rank == 3) {
+      rankColor = const Color(0xFFCD7F32);
+    } else {
+      rankColor = Colors.grey.shade400;
+    }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: rankColor.withValues(alpha: 0.2),
-          child: Text('$rank', style: TextStyle(color: rankColor, fontWeight: FontWeight.bold)),
-        ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(12),
+            color: rankColor.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
           ),
-          child: Text(
-            '$count nhóm', 
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+          child: Center(
+            child: rankIcon != null 
+              ? Icon(rankIcon, color: rankColor, size: 24)
+              : Text(
+                  '$rank',
+                  style: TextStyle(
+                    color: rankColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
           ),
         ),
+        title: Text(
+          name,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+            color: Color(0xFF2D3142),
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            children: [
+              Container(
+                width: 100,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: _totalGroups > 0 ? (count / _totalGroups).clamp(0.0, 1.0) : 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade400,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$count nhóm',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
       ),
     );
   }

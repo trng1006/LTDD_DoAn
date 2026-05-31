@@ -21,10 +21,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthProvider>().user;
-      if (user == null) return;
-      final provider = context.read<NotificationProvider>();
-      provider.startPolling(user.id);
-      provider.fetchNotifications(user.id);
+      if (user != null) {
+        context.read<NotificationProvider>().startPolling(user.id);
+      }
     });
   }
 
@@ -34,17 +33,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final provider = context.watch<NotificationProvider>();
 
     if (user == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: Text('Chưa đăng nhập')));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Thông báo (${provider.unreadCount})'),
+        title: Text(
+          provider.unreadCount > 0
+              ? 'Thông báo (${provider.unreadCount})'
+              : 'Thông báo',
+        ),
         actions: [
           if (provider.unreadCount > 0)
-            TextButton(
+            IconButton(
+              tooltip: 'Đánh dấu đã đọc',
+              icon: const Icon(Icons.done_all_rounded),
               onPressed: () => provider.markAllAsRead(user.id),
-              child: const Text('Đã đọc hết'),
             ),
         ],
       ),
@@ -56,8 +60,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: const [
-                  SizedBox(height: 220),
-                  Center(child: Text('Chưa có thông báo nào.')),
+                  SizedBox(height: 180),
+                  Icon(
+                    Icons.notifications_off_outlined,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Center(child: Text('Chưa có thông báo nào')),
                 ],
               )
             : ListView.builder(
@@ -78,20 +88,34 @@ class _NotificationScreenState extends State<NotificationScreen> {
     NotificationProvider provider,
     NotificationModel notification,
   ) {
-    final color = _iconColor(notification.title);
+    final style = _styleFor(notification);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: notification.isRead ? null : color.withValues(alpha: 0.06),
+      color: notification.isRead ? Colors.white : Colors.blue.shade50,
       child: ListTile(
+        onTap: () => provider.markAsRead(notification),
         leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.12),
-          child: Icon(_iconFor(notification.title), color: color),
+          backgroundColor: style.color.withValues(alpha: 0.12),
+          child: Icon(style.icon, color: style.color),
         ),
-        title: Text(
-          notification.title,
-          style: TextStyle(
-            fontWeight: notification.isRead ? FontWeight.w600 : FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                notification.title,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            if (!notification.isRead)
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Colors.blue,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,29 +130,43 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ],
         ),
         isThreeLine: true,
-        trailing: notification.isRead
-            ? null
-            : const Icon(Icons.circle, size: 10, color: Colors.blue),
-        onTap: () => provider.markAsRead(notification),
       ),
     );
   }
 
-  IconData _iconFor(String title) {
-    final normalized = title.toLowerCase();
-    if (normalized.contains('tham gia')) return Icons.person_add_alt_1;
-    if (normalized.contains('duyệt')) return Icons.check_circle_outline;
-    if (normalized.contains('từ chối')) return Icons.cancel_outlined;
-    if (normalized.contains('đề tài')) return Icons.assignment_outlined;
-    return Icons.notifications_none_rounded;
+  _NotificationStyle _styleFor(NotificationModel notification) {
+    switch (notification.type) {
+      case 'join_request':
+        return const _NotificationStyle(
+          Icons.person_add_alt_1_rounded,
+          Colors.orange,
+        );
+      case 'join_approved':
+      case 'topic_approved':
+        return const _NotificationStyle(
+          Icons.check_circle_rounded,
+          Colors.green,
+        );
+      case 'join_rejected':
+      case 'topic_rejected':
+        return const _NotificationStyle(Icons.cancel_rounded, Colors.red);
+      case 'topic_registration':
+        return const _NotificationStyle(
+          Icons.assignment_turned_in_rounded,
+          Colors.blue,
+        );
+      default:
+        return const _NotificationStyle(
+          Icons.notifications_rounded,
+          Colors.purple,
+        );
+    }
   }
+}
 
-  Color _iconColor(String title) {
-    final normalized = title.toLowerCase();
-    if (normalized.contains('từ chối')) return Colors.red;
-    if (normalized.contains('duyệt')) return Colors.green;
-    if (normalized.contains('tham gia')) return Colors.orange;
-    if (normalized.contains('đề tài')) return Colors.blue;
-    return Colors.purple;
-  }
+class _NotificationStyle {
+  final IconData icon;
+  final Color color;
+
+  const _NotificationStyle(this.icon, this.color);
 }
