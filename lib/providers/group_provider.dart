@@ -128,18 +128,6 @@ class GroupProvider with ChangeNotifier {
     if (success) await fetchGroups();
   }
 
-  GroupModel? groupOfUserInCourse(String userId, String courseId) {
-    try {
-      return _groups.firstWhere((g) => g.courseId == courseId && g.memberIds.contains(userId));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  bool isInAnyGroup(String userId) {
-    return _groups.any((g) => g.memberIds.contains(userId));
-  }
-
   Future<List<GroupModel>> searchGroups({String? search, String? courseId}) async {
     _isLoading = true;
     notifyListeners();
