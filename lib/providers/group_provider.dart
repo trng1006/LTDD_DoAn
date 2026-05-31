@@ -10,6 +10,10 @@ class GroupProvider with ChangeNotifier {
   List<GroupModel> get groups => _groups;
   bool get isLoading => _isLoading;
 
+  GroupProvider() {
+    fetchGroups();
+  }
+
   /// Nhóm mà [userId] đang tham gia (member hoặc pending) trong [courseId], nếu có.
   GroupModel? groupOfUserInCourse(String userId, String courseId) {
     for (final g in _groups) {
@@ -22,7 +26,6 @@ class GroupProvider with ChangeNotifier {
   }
 
   /// Nhóm mà [userId] làm TRƯỞNG NHÓM trong [courseId], nếu có.
-  /// Dùng cho màn Chọn đề tài: chỉ trưởng nhóm mới đăng ký, và phải đúng nhóm của môn đó.
   GroupModel? leaderGroupInCourse(String userId, String courseId) {
     for (final g in _groups) {
       if (g.courseId == courseId && g.leaderId == userId) {
@@ -36,10 +39,6 @@ class GroupProvider with ChangeNotifier {
   bool isInAnyGroup(String userId) {
     return _groups.any((g) =>
         g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId));
-  }
-
-  GroupProvider() {
-    fetchGroups();
   }
 
   Future<void> fetchGroups({
@@ -142,20 +141,6 @@ class GroupProvider with ChangeNotifier {
   Future<void> updateGroup(GroupModel group) async {
     bool success = await _apiService.updateGroup(group);
     if (success) await fetchGroups();
-  }
-
-  GroupModel? groupOfUserInCourse(String userId, String courseId) {
-    try {
-      return _groups.firstWhere(
-        (g) => g.courseId == courseId && g.memberIds.contains(userId),
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  bool isInAnyGroup(String userId) {
-    return _groups.any((g) => g.memberIds.contains(userId));
   }
 
   Future<List<GroupModel>> searchGroups({

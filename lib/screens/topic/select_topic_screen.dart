@@ -22,6 +22,11 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
   bool _isSubmitting = false;
   List<TopicModel> _topics = [];
   String? _selectedTopicId;
+  
+  late String _userId;
+  late String _courseId;
+  GroupModel? _activeGroup;
+  bool _isMemberNotLeader = false;
 
   /// Nhóm đã có đề tài từ trước hay chưa (để đổi nhãn "Chọn"/"Đổi").
   bool get _hasTopic =>
@@ -210,7 +215,7 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
     final error = await context.read<GroupProvider>().registerTopic(
       widget.group.id,
       _selectedTopicId!,
-      user.id,
+      _userId,
     );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -561,7 +566,7 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              _buildStatusBadge(topic, selected),
+              _buildStatusBadge(selected),
             ],
           ),
         ),

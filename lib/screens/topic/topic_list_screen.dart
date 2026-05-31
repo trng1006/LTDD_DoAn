@@ -25,40 +25,16 @@ class _TopicListScreenState extends State<TopicListScreen> {
   String? _selectedCourseId;
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
-  // Bảng màu + icon Lucide gán luân phiên cho từng đề tài để giống mẫu.
-  static const List<IconData> _topicIcons = [
-    LucideIcons.shoppingCart,
-    LucideIcons.graduationCap,
-    LucideIcons.clipboardList,
-    LucideIcons.house,
-    LucideIcons.plane,
-    LucideIcons.chartColumnBig,
-  ];
-
   @override
   void initState() {
     super.initState();
-    // Tự động focus theo lớp đang được chọn bên ngoài (CourseProvider).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      _reloadData();
       final sel = context.read<CourseProvider>().selectedCourseId;
       if (sel != null && sel.isNotEmpty) {
         setState(() => _selectedCourseId = sel);
       }
     });
-  }
-
-  /// Đề tài "khả dụng": đang trong thời gian đăng ký và còn chỗ cho nhóm.
-  bool _isAvailable(TopicModel t) {
-    final now = DateTime.now();
-    final bool open = now.isAfter(t.startTime) && now.isBefore(t.endTime);
-    return open && t.currentGroups < t.maxGroups;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reloadData());
   }
 
   Future<void> _reloadData() async {
@@ -80,6 +56,7 @@ class _TopicListScreenState extends State<TopicListScreen> {
   Widget build(BuildContext context) {
     final topicProvider = context.watch<TopicProvider>();
     final authProvider = context.watch<AuthProvider>();
+    final courseProvider = context.watch<CourseProvider>();
     final user = authProvider.user;
 
     final bool isLecturer = user?.role == 'lecturer';
@@ -114,12 +91,6 @@ class _TopicListScreenState extends State<TopicListScreen> {
       displayTopics.sort((a, b) => a.title.compareTo(b.title));
     }
 
-    final int totalCount = courseScoped.length;
-    final int availableCount = courseScoped.where(_isAvailable).length;
-
-    final String title =
-        isLecturer ? 'Đề tài của tôi' : (isAdmin ? 'Tất cả đề tài' : 'Danh sách đề tài');
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -139,7 +110,7 @@ class _TopicListScreenState extends State<TopicListScreen> {
       ),
       body: Column(
         children: [
-          _buildHeader(context, title, isLecturer || isAdmin),
+          _buildSearchAndFilter(courseProvider, user),
           Expanded(
             child: topicProvider.isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -179,12 +150,7 @@ class _TopicListScreenState extends State<TopicListScreen> {
     } else {
       relevantCourses = courses;
     }
-    return context.read<CourseProvider>().getCourseById(_selectedCourseId!)?.name ??
-        'Chưa rõ môn học';
-  }
 
-  /// Thẻ "Môn học hiện tại" + nút "Đổi môn" như mẫu.
-  Widget _buildCourseCard(BuildContext context, UserModel? user) {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Theme.of(context).colorScheme.surface,
@@ -206,7 +172,7 @@ class _TopicListScreenState extends State<TopicListScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  isExpanded: true, // Prevent horizontal overflow
+                  isExpanded: true,
                   initialValue: _selectedCourseId ?? 'all',
                   decoration: const InputDecoration(
                     labelText: 'Môn học',
@@ -247,242 +213,8 @@ class _TopicListScreenState extends State<TopicListScreen> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Bottom sheet chọn môn học giống mẫu.
-  Future<void> _changeCourse(BuildContext context, UserModel? user) async {
-    final courseProvider = context.read<CourseProvider>();
-    List<CourseModel> courses;
-    if (user != null && user.role == 'student') {
-      courses = courseProvider.courses
-          .where((c) => user.enrolledCourseIds.contains(c.id))
-          .toList();
-    } else if (user != null && user.role == 'lecturer') {
-      courses = courseProvider.courses
-          .where((c) => user.taughtCourseIds.contains(c.id))
-          .toList();
-    } else {
-      courses = courseProvider.courses;
-    }
-
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text('Chọn môn học',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      (_selectedCourseId == null || _selectedCourseId == 'all')
-                          ? LucideIcons.checkCheck
-                          : LucideIcons.layers,
-                      color: const Color(0xFF2F6BFF),
-                    ),
-                    title: const Text('Tất cả môn học'),
-                    trailing: (_selectedCourseId == null || _selectedCourseId == 'all')
-                        ? const Icon(LucideIcons.check, color: Color(0xFF22A65A))
-                        : null,
-                    onTap: () => Navigator.pop(sheetContext, 'all'),
-                  ),
-                  ...courses.map((c) {
-                    final bool isCurrent = c.id == _selectedCourseId;
-                    return ListTile(
-                      leading: Icon(
-                        isCurrent ? LucideIcons.checkCheck : LucideIcons.bookMarked,
-                        color: const Color(0xFF2F6BFF),
-                      ),
-                      title: Text(c.name),
-                      subtitle: Text('Mã môn: ${c.code}'),
-                      trailing: isCurrent
-                          ? const Icon(LucideIcons.check, color: Color(0xFF22A65A))
-                          : null,
-                      onTap: () => Navigator.pop(sheetContext, c.id),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-
-    if (picked != null) {
-      setState(() => _selectedCourseId = picked);
-      // Đồng bộ ra ngoài để các màn khác cùng focus theo (trừ lựa chọn "Tất cả").
-      if (picked != 'all') courseProvider.selectCourse(picked);
-    }
-  }
-
-  /// Thanh tìm kiếm + nút sắp xếp.
-  Widget _buildSearchBar() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Tìm kiếm đề tài...',
-                prefixIcon: Icon(LucideIcons.search, size: 20, color: Color(0xFF94A3B8)),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-              ),
-              onChanged: (value) => setState(() => _searchQuery = value),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
             ],
           ),
-          child: PopupMenuButton<String>(
-            initialValue: _sortBy,
-            icon: const Icon(LucideIcons.arrowUpDown, color: Color(0xFF2F6BFF)),
-            tooltip: 'Sắp xếp',
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            onSelected: (val) => setState(() => _sortBy = val),
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'Tiêu đề', child: Text('Sắp xếp theo Tiêu đề')),
-              const PopupMenuItem(
-                  value: 'Số lượng nhóm', child: Text('Sắp xếp theo Số lượng nhóm')),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Tiêu đề "Đề tài" + badge "khả dụng / tổng số".
-  Widget _buildSectionTitle(int available, int total) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Expanded(
-          child: Text(
-            'Danh sách đề tài',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-        ),
-        if (total > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAF1FF),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(LucideIcons.listChecks, size: 15, color: Color(0xFF2F6BFF)),
-                const SizedBox(width: 6),
-                Text(
-                  '$available/$total khả dụng',
-                  style: const TextStyle(
-                    color: Color(0xFF2F6BFF),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, String title, bool canManage) {
-    final double topPad = MediaQuery.of(context).padding.top;
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(8, (topPad > 0 ? topPad : 16) + 10, 12, 26),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1D6BF3), Color(0xFF2F8BFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
-            onPressed: () => Navigator.maybePop(context),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          if (canManage)
-            Container(
-              margin: const EdgeInsets.only(right: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: const Icon(LucideIcons.plus, color: Colors.white),
-                tooltip: 'Thêm đề tài',
-                onPressed: () => _showAddEditTopic(context),
-              ),
-            ),
         ],
       ),
     );
@@ -503,13 +235,13 @@ class _TopicListScreenState extends State<TopicListScreen> {
     String statusText = 'Đang mở';
 
     if (!isStarted) {
-      statusColor = const Color(0xFFEA580C);
+      statusColor = Colors.orange;
       statusText = 'Chưa bắt đầu';
     } else if (isEnded) {
-      statusColor = const Color(0xFFE5484D);
+      statusColor = Colors.red;
       statusText = 'Đã kết thúc';
     } else if (isFull) {
-      statusColor = const Color(0xFF94A3B8);
+      statusColor = Colors.grey;
       statusText = 'Đã đầy';
     }
 
@@ -616,108 +348,9 @@ class _TopicListScreenState extends State<TopicListScreen> {
                         fontStyle: FontStyle.italic,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            topic.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            topic.description,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (isLecturer || isAdmin)
-                      PopupMenuButton<String>(
-                        icon: const Icon(LucideIcons.ellipsisVertical,
-                            size: 18, color: Color(0xFF94A3B8)),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(LucideIcons.pencil, size: 16, color: Color(0xFF2F6BFF)),
-                                SizedBox(width: 8),
-                                Text('Chỉnh sửa'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(LucideIcons.trash2, size: 16, color: Color(0xFFE5484D)),
-                                SizedBox(width: 8),
-                                Text('Xoá'),
-                              ],
-                            ),
-                          ),
-                        ],
-                        onSelected: (val) {
-                          if (val == 'edit') _showAddEditTopic(context, topic: topic);
-                          if (val == 'delete') context.read<TopicProvider>().deleteTopic(topic.id);
-                        },
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _pill(statusIcon, statusText, statusColor),
-                    const Spacer(),
-                    Icon(LucideIcons.calendar, size: 13, color: Colors.grey.shade400),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Hạn: ${DateFormat('dd/MM').format(topic.endTime)}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                    ),
-                  ],
-                ),
-                Divider(height: 22, color: Colors.grey.shade200),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(LucideIcons.users,
-                            size: 16, color: isFull ? const Color(0xFFE5484D) : const Color(0xFF22A65A)),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${topic.currentGroups}/${topic.maxGroups} nhóm',
-                          style: TextStyle(
-                            color: isFull ? const Color(0xFFE5484D) : const Color(0xFF22A65A),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (isAdmin)
-                      Text(
-                        'GV: ${topic.lecturerId}',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                            color: Colors.grey.shade500),
-                      ),
-                  ],
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -737,22 +370,17 @@ class _TopicListScreenState extends State<TopicListScreen> {
     final bool isEnded = now.isAfter(topic.endTime);
     final bool isOpen = isStarted && !isEnded;
 
-    final myGroup = groupProvider.groups.firstWhere(
-      (g) => g.leaderId == user?.id && g.courseId == topic.courseId,
-      orElse: () => GroupModel(
-        id: '',
-        name: '',
-        description: '',
-        courseId: '',
-        maxMembers: 0,
-        memberIds: [],
-        pendingMemberIds: [],
-        leaderId: '',
-      ),
-    );
+    GroupModel? myGroup;
+    try {
+       myGroup = groupProvider.groups.firstWhere(
+        (g) => g.leaderId == user?.id && g.courseId == topic.courseId,
+      );
+    } catch (_) {
+       myGroup = null;
+    }
 
-    final bool canRegister = myGroup.id.isNotEmpty && !myGroup.isLocked;
-    final int minMembers = myGroup.minMembers;
+    final bool canRegister = myGroup != null && !myGroup.isLocked;
+    final int minMembers = myGroup?.minMembers ?? 2;
 
     showModalBottomSheet(
       context: context,
@@ -782,15 +410,6 @@ class _TopicListScreenState extends State<TopicListScreen> {
               Text(
                 'Giảng viên: ${topic.lecturerId}',
                 style: const TextStyle(fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(LucideIcons.userRound, size: 15, color: Color(0xFF94A3B8)),
-                  const SizedBox(width: 6),
-                  Text('Giảng viên: ${topic.lecturerId}',
-                      style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey.shade600)),
-                ],
               ),
               const SizedBox(height: 16),
               Container(
@@ -848,7 +467,7 @@ class _TopicListScreenState extends State<TopicListScreen> {
                     ),
                   )
                 else if (canRegister) ...[
-                  if (myGroup.memberIds.length < minMembers)
+                  if (myGroup!.memberIds.length < minMembers)
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -875,7 +494,7 @@ class _TopicListScreenState extends State<TopicListScreen> {
                                 final error = await context
                                     .read<GroupProvider>()
                                     .registerTopic(
-                                      myGroup.id,
+                                      myGroup!.id,
                                       topic.id,
                                       user?.id ?? '',
                                     );
@@ -902,10 +521,12 @@ class _TopicListScreenState extends State<TopicListScreen> {
                       ),
                     ),
                 ] else
-                  const Center(
+                  Center(
                     child: Text(
-                      'Bạn phải là trưởng nhóm để đăng ký đề tài.',
-                      style: TextStyle(fontStyle: FontStyle.italic),
+                      myGroup != null && myGroup.isLocked 
+                        ? 'Nhóm đã chốt đề tài, không thể thay đổi.' 
+                        : 'Bạn phải là trưởng nhóm để đăng ký đề tài.',
+                      style: const TextStyle(fontStyle: FontStyle.italic),
                     ),
                   ),
               ],
@@ -927,36 +548,17 @@ class _TopicListScreenState extends State<TopicListScreen> {
     );
   }
 
-  Widget _noticeBox(String text) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: const Color(0xFFFDECEC), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.circleAlert, size: 18, color: Color(0xFFE5484D)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(text,
-                style: const TextStyle(color: Color(0xFFE5484D), fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _timeRow(IconData icon, String label, String time) {
     return Row(
       children: [
-        Icon(icon, size: 15, color: const Color(0xFF2F6BFF)),
+        Icon(icon, size: 14, color: Colors.blue),
         const SizedBox(width: 8),
         Text(
           label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
         ),
         const Spacer(),
-        Text(time, style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+        Text(time, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
