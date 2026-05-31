@@ -66,6 +66,7 @@ File `lib/services/api_service.dart` hiện chỉ export lại service chính đ
   - Giảng viên duyệt/từ chối đề tài.
 - Flutter có `NotificationProvider` polling mỗi 5 giây.
 - Khi có thông báo mới sau lần load đầu, app hiện banner thả xuống ở đầu màn hình trong 1 giây.
+(Lưu ý khi chạy song song nhiều thiết bị mới có)
 - Nút `Thông báo` ngoài màn Home có badge số thông báo chưa đọc.
 - Màn Thông báo hiển thị dữ liệu thật từ backend.
 - Bấm 1 thông báo sẽ cập nhật `isRead=true`.
