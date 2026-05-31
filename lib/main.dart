@@ -132,7 +132,7 @@ class _NotificationToastHostState extends State<NotificationToastHost> {
     );
 
     overlay.insert(_entry!);
-    _hideTimer = Timer(const Duration(seconds: 1), () {
+    _hideTimer = Timer(const Duration(seconds: 4), () {
       _entry?.remove();
       _entry = null;
     });

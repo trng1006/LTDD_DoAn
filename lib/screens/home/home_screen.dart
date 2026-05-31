@@ -392,44 +392,57 @@ class HomeScreen extends StatelessWidget {
   ) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Chọn lớp học',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const Divider(),
-            ...courses.map(
-              (c) => ListTile(
-                leading: Icon(
-                  Icons.circle,
-                  size: 12,
-                  color: provider.selectedCourseId == c.id
-                      ? Colors.blue
-                      : Colors.transparent,
-                ),
-                title: Text(
-                  c.name,
-                  style: TextStyle(
-                    fontWeight: provider.selectedCourseId == c.id
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                ),
-                subtitle: Text(c.code),
-                onTap: () {
-                  provider.selectCourse(c.id);
-                  Navigator.pop(context);
-                },
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              const Text(
+                'Chọn lớp học',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
-          ],
+              const Divider(),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  itemCount: courses.length,
+                  itemBuilder: (context, index) {
+                    final c = courses[index];
+                    return ListTile(
+                      leading: Icon(
+                        Icons.circle,
+                        size: 12,
+                        color: provider.selectedCourseId == c.id
+                            ? Colors.blue
+                            : Colors.transparent,
+                      ),
+                      title: Text(
+                        c.name,
+                        style: TextStyle(
+                          fontWeight: provider.selectedCourseId == c.id
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      subtitle: Text(c.code),
+                      onTap: () {
+                        provider.selectCourse(c.id);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

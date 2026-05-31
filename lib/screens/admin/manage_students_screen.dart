@@ -187,7 +187,13 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                           ),
                           title: Row(
                             children: [
-                              Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Expanded(
+                                child: Text(
+                                  user.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               if (!user.isActive)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 8.0),

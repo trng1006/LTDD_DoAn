@@ -88,8 +88,10 @@ class _TopicListScreenState extends State<TopicListScreen> {
       appBar: AppBar(
         title: Text(
           isLecturer
-              ? 'Đề tài của tôi'
-              : (isAdmin ? 'Tất cả đề tài' : 'Danh sách đề tài'),
+              ? 'Đề tài của tôi (${displayTopics.length})'
+              : (isAdmin
+                  ? 'Tất cả đề tài (${displayTopics.length})'
+                  : 'Danh sách đề tài (${displayTopics.length})'),
         ),
         actions: [
           if (isLecturer || isAdmin)
