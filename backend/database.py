@@ -28,3 +28,25 @@ def get_db_connection():
     except Exception as e:
         print(f"DEBUG: Unexpected error in get_db_connection: {e}")
         return None
+
+def ensure_db_setup():
+    """Tự động kiểm tra và cập nhật cấu trúc Database (is_active, v.v.)"""
+    conn = get_db_connection()
+    if not conn:
+        return
+    try:
+        cursor = conn.cursor()
+        # 1. Kiểm tra và thêm cột is_active vào bảng users nếu chưa có
+        cursor.execute("SHOW COLUMNS FROM users LIKE 'is_active'")
+        result = cursor.fetchone()
+        if not result:
+            print("Bổ sung cột is_active vào bảng users...")
+            cursor.execute("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE")
+            conn.commit()
+            
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Lỗi khi setup database: {e}")
+        if conn and conn.is_connected():
+            conn.close()

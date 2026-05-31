@@ -200,31 +200,31 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                                 )
                             ],
                           ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Email: ${user.email}'),
-                            Text('Mã số: ${user.identity ?? "Chưa cập nhật"}', style: const TextStyle(color: Colors.grey)),
-                            if (user.role == 'student')
-                              Padding(
-                                padding: const EdgeInsets.top(4.0),
-                                child: Text(
-                                  'Học kỳ hiện tại: ${courseProvider.getSemesterName(user.currentSemesterId)}',
-                                  style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Email: ${user.email}'),
+                              Text('Mã số: ${user.identity ?? "Chưa cập nhật"}', style: const TextStyle(color: Colors.grey)),
+                              if (user.role == 'student')
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Text(
+                                    'Học kỳ hiện tại: ${courseProvider.getSemesterName(user.currentSemesterId)}',
+                                    style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                                  ),
                                 ),
-                              ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (user.role == 'student')
-                              IconButton(
-                                icon: const Icon(Icons.calendar_month, color: Colors.blue),
-                                tooltip: 'Xếp Học kỳ cho sinh viên',
-                                onPressed: () => _showSemesterDialog(context, user, courseProvider, userProvider),
-                              ),
-                            // Nút Bật / Khóa tài khoản thành viên
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (user.role == 'student')
+                                IconButton(
+                                  icon: const Icon(Icons.calendar_month, color: Colors.blue),
+                                  tooltip: 'Xếp Học kỳ cho sinh viên',
+                                  onPressed: () => _showSemesterDialog(context, user, courseProvider, userProvider),
+                                ),
+                              // Nút Bật / Khóa tài khoản thành viên
                               IconButton(
                                 icon: Icon(
                                   user.isActive ? Icons.lock_open : Icons.lock, 
@@ -245,12 +245,13 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                                   }
                                 },
                               ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-                              tooltip: 'Xóa vĩnh viễn tài khoản',
-                              onPressed: () => _showDeleteConfirmDialog(context, user, userProvider),
-                            ),
-                          ],
+                              IconButton(
+                                icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+                                tooltip: 'Xóa vĩnh viễn tài khoản',
+                                onPressed: () => _showDeleteConfirmDialog(context, user, userProvider),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -297,6 +298,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
   }
 
   void _showAddUserDialog(BuildContext context, UserProvider userProvider) {
+    final courseProvider = context.read<CourseProvider>();
     final formKey = GlobalKey<FormState>();
     final idController = TextEditingController();
     final usernameController = TextEditingController();
@@ -305,6 +307,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
     final passwordController = TextEditingController();
     final identityController = TextEditingController();
     String selectedRole = 'student';
+    String? selectedSemesterId;
 
     showDialog(
       context: context,
@@ -328,6 +331,27 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                       ],
                       onChanged: (val) => setStateDialog(() => selectedRole = val!),
                     ),
+                    if (selectedRole == 'student')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedSemesterId,
+                          decoration: const InputDecoration(
+                            labelText: 'Chọn Học kỳ',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Chưa phân bổ'),
+                            ),
+                            ...courseProvider.semesters.map(
+                              (s) => DropdownMenuItem<String>(value: s.id, child: Text(s.name)),
+                            ),
+                          ],
+                          onChanged: (val) => setStateDialog(() => selectedSemesterId = val),
+                        ),
+                      ),
                     TextFormField(controller: idController, decoration: const InputDecoration(labelText: 'Mã ID (sv01, gv01)')),
                     TextFormField(controller: usernameController, decoration: const InputDecoration(labelText: 'Username')),
                     TextFormField(controller: nameController, decoration: const InputDecoration(labelText: 'Họ và tên')),
@@ -352,6 +376,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                     password: passwordController.text,
                     role: selectedRole,
                     identity: identityController.text.trim(),
+                    currentSemesterId: selectedRole == 'student' ? selectedSemesterId : null,
                   );
                   if (context.mounted) {
                     if (error == null) {
@@ -380,7 +405,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
         builder: (context, setStateDialog) => AlertDialog(
           title: Text('Chọn Học kỳ cho: ${student.name}'),
           content: DropdownButtonFormField<String>(
-            value: courseProvider.semesters.any((s) => s.id == selectedSemesterId) ? selectedSemesterId : null,
+            initialValue: courseProvider.semesters.any((s) => s.id == selectedSemesterId) ? selectedSemesterId : null,
             decoration: const InputDecoration(
               labelText: 'Học kỳ phân bổ',
               border: OutlineInputBorder(),

@@ -1,41 +1,68 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-// Import các Provider trong dự án của bạn
-import '../../providers/user_provider.dart';
-import '../../providers/group_provider.dart';
-import '../../providers/topic_provider.dart';
-import '../../providers/course_provider.dart'; // THÊM DÒNG NÀY
+import 'package:http/http.dart' as http;
+import '../../core/services/api_service.dart';
 
 // Import các màn hình để điều hướng
 import 'manage_students_screen.dart';
 import 'statistics_screen.dart';
 import 'system_settings_screen.dart';
-import 'manage_courses_screen.dart'; // THÊM DÒNG NÀY
+import 'manage_courses_screen.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  bool _isLoading = true;
+  int _totalStudents = 0;
+  int _totalLecturers = 0;
+  int _totalTopics = 0;
+  int _totalGroups = 0;
+  int _totalCourses = 0;
+  int _pendingApprovals = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDashboardStats();
+  }
+
+  Future<void> _fetchDashboardStats() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(Uri.parse('${ApiService.baseUrl}/admin/dashboard-stats'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _totalStudents = data['students'] ?? 0;
+          _totalLecturers = data['lecturers'] ?? 0;
+          _totalTopics = data['topics'] ?? 0;
+          _totalGroups = data['totalGroups'] ?? 0;
+          _totalCourses = data['courses'] ?? 0;
+          _pendingApprovals = data['pendingApprovals'] ?? 0;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Lỗi fetchDashboardStats: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Lấy dữ liệu động từ các Provider thực tế trong project của bạn
-    final userProvider = context.watch<UserProvider>();
-    final groupProvider = context.watch<GroupProvider>();
-    final topicProvider = context.watch<TopicProvider>();
-    final courseProvider = context.watch<CourseProvider>(); // THÊM DÒNG NÀY
-
-    // Tính toán số lượng thực tế
-    final totalStudents = userProvider.users.where((u) => u.role == 'student').length;
-    final totalTopics = topicProvider.topics.length; 
-    final totalGroups = groupProvider.groups.length; 
-    final totalCourses = courseProvider.courses.length; // THÊM DÒNG NÀY
-    
-    // Giả định các nhóm hoặc đề tài có thuộc tính status == 'pending'
-    final pendingApprovals = groupProvider.groups.where((g) => g.status == 'pending').length; 
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchDashboardStats,
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.push(
@@ -45,52 +72,56 @@ class AdminDashboardScreen extends StatelessWidget {
           )
         ],
       ),
-      body: GridView.count(
-        padding: const EdgeInsets.all(24),
-        crossAxisCount: 2,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        children: [
-          _buildStatCard(
-            context, 
-            'Sinh viên & GV', 
-            '$totalStudents', 
-            Icons.people,
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageStudentsScreen())),
-          ),
-          // THÊM THẺ MỚI: QUẢN LÝ MÔN HỌC & HỌC KỲ
-          _buildStatCard(
-            context, 
-            'Môn học', 
-            '$totalCourses', 
-            Icons.menu_book_rounded,
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageCoursesScreen())),
-          ),
-          _buildStatCard(
-            context, 
-            'Đề tài', 
-            '$totalTopics', 
-            Icons.book,
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StatisticsScreen())), 
-          ),
-          _buildStatCard(
-            context, 
-            'Nhóm', 
-            '$totalGroups', 
-            Icons.group,
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StatisticsScreen())),
-          ),
-          _buildStatCard(
-            context, 
-            'Chờ duyệt', 
-            '$pendingApprovals', 
-            Icons.pending_actions,
-            () {
-              _showPendingApprovalsDialog(context);
-            },
-          ),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _fetchDashboardStats,
+              child: GridView.count(
+                padding: const EdgeInsets.all(24),
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                children: [
+                  _buildStatCard(
+                    context, 
+                    'Sinh viên & GV', 
+                    '${_totalStudents + _totalLecturers}', 
+                    Icons.people,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageStudentsScreen())).then((_) => _fetchDashboardStats()),
+                  ),
+                  _buildStatCard(
+                    context, 
+                    'Môn học', 
+                    '$_totalCourses', 
+                    Icons.menu_book_rounded,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageCoursesScreen())).then((_) => _fetchDashboardStats()),
+                  ),
+                  _buildStatCard(
+                    context, 
+                    'Đề tài', 
+                    '$_totalTopics', 
+                    Icons.book,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StatisticsScreen())).then((_) => _fetchDashboardStats()), 
+                  ),
+                  _buildStatCard(
+                    context, 
+                    'Nhóm', 
+                    '$_totalGroups', 
+                    Icons.group,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StatisticsScreen())).then((_) => _fetchDashboardStats()),
+                  ),
+                  _buildStatCard(
+                    context, 
+                    'Chờ duyệt', 
+                    '$_pendingApprovals', 
+                    Icons.pending_actions,
+                    () {
+                      _showPendingApprovalsDialog(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
     );
   }
 

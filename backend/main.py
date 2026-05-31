@@ -1,11 +1,16 @@
 from fastapi import FastAPI, HTTPException, Depends, Body
 from typing import List, Optional
 from pydantic import BaseModel
-from database import get_db_connection
+from database import get_db_connection, ensure_db_setup
 import mysql.connector
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Hệ thống Đăng ký Đề tài API")
+
+@app.on_event("startup")
+def startup_event():
+    ensure_db_setup()
+
 #python3 -m uvicorn main:app --reload
 # --- CORS configuration ---
 app.add_middleware(
@@ -500,15 +505,25 @@ def get_dashboard_stats():
     lecturers_count = cursor.fetchone()['total']
     cursor.execute("SELECT COUNT(*) as total FROM `groups` WHERE status = 'approved'")
     approved_groups = cursor.fetchone()['total']
+    cursor.execute("SELECT COUNT(*) as total FROM `groups`")
+    total_groups = cursor.fetchone()['total']
     cursor.execute("SELECT COUNT(*) as total FROM topics")
     topics_count = cursor.fetchone()['total']
+    cursor.execute("SELECT COUNT(*) as total FROM courses")
+    courses_count = cursor.fetchone()['total']
+    cursor.execute("SELECT COUNT(*) as total FROM `groups` WHERE status = 'pending'")
+    pending_groups = cursor.fetchone()['total']
+    
     cursor.close()
     conn.close()
     return {
         "students": students_count,
         "lecturers": lecturers_count,
+        "totalGroups": total_groups,
         "approvedGroups": approved_groups,
-        "topics": topics_count
+        "topics": topics_count,
+        "courses": courses_count,
+        "pendingApprovals": pending_groups
     }
 
 # --- API Lấy Dữ Liệu Thống Kê Cho Dashboard ---

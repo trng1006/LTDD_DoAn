@@ -157,7 +157,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return Expanded(
       child: Card(
       // Đổi màu nền của Card theo màu sắc của từng loại số liệu
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -183,7 +183,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: rankColor.withOpacity(0.2),
+          backgroundColor: rankColor.withValues(alpha: 0.2),
           child: Text('$rank', style: TextStyle(color: rankColor, fontWeight: FontWeight.bold)),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),

@@ -30,46 +30,48 @@ class UserProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+Future<String?> addUser({
+  required String id,
+  required String username,
+  required String name,
+  required String email,
+  required String password,
+  required String role,
+  required String identity,
+  String? currentSemesterId,
+}) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/users'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'id': id,
+        'username': username.isEmpty ? id : username,
+        'name': name,
+        'email': email,
+        'password': password.isEmpty ? '123' : password,
+        'role': role,
+        'identity': identity,
+        'enrolledCourseIds': [],
+        'taughtCourseIds': [],
+        'currentSemesterId': currentSemesterId,
+        'isActive': true,
+      }),
+    );
 
-  Future<String?> addUser({
-    required String id,
-    required String username,
-    required String name,
-    required String email,
-    required String password,
-    required String role,
-    required String identity,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/users'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'id': id,
-          'username': username.isEmpty ? id : username,
-          'name': name,
-          'email': email,
-          'password': password.isEmpty ? '123' : password,
-          'role': role,
-          'identity': identity,
-          'enrolledCourseIds': [],
-          'taughtCourseIds': [],
-          'currentSemesterId': role == 'student' ? 's6' : null,
-        }),
+    if (response.statusCode == 200) {
+      final newUser = UserModel(
+        id: id,
+        username: username.isEmpty ? id : username,
+        name: name,
+        email: email,
+        role: role,
+        identity: identity,
+        enrolledCourseIds: [],
+        taughtCourseIds: [],
+        currentSemesterId: currentSemesterId,
+        isActive: true,
       );
-
-      if (response.statusCode == 200) {
-        final newUser = UserModel(
-          id: id,
-          username: username.isEmpty ? id : username,
-          name: name,
-          email: email,
-          role: role,
-          identity: identity,
-          enrolledCourseIds: [],
-          taughtCourseIds: [],
-          currentSemesterId: role == 'student' ? 's6' : null,
-        );
         
         _users.add(newUser);
         notifyListeners();
