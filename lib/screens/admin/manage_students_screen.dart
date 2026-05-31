@@ -172,15 +172,34 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                   itemCount: filteredUsers.length,
                   itemBuilder: (context, index) {
                     final user = filteredUsers[index];
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: user.role == 'student' ? Colors.blue.shade100 : Colors.orange.shade100,
-                          child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
-                        ),
-                        title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+
+                    return Opacity(
+                      opacity: user.isActive ? 1.0 : 0.5,
+                      child: Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: !user.isActive 
+                                ? Colors.grey.shade300 
+                                : (user.role == 'student' ? Colors.blue.shade100 : Colors.orange.shade100),
+                            child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
+                          ),
+                          title: Row(
+                            children: [
+                              Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              if (!user.isActive)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 8.0),
+                                  child: Chip(
+                                    label: Text('Đang Khóa', style: TextStyle(fontSize: 10, color: Colors.white)),
+                                    backgroundColor: Colors.red,
+                                    padding: EdgeInsets.zero,
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                )
+                            ],
+                          ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -205,9 +224,30 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                                 tooltip: 'Xếp Học kỳ cho sinh viên',
                                 onPressed: () => _showSemesterDialog(context, user, courseProvider, userProvider),
                               ),
+                            // Nút Bật / Khóa tài khoản thành viên
+                              IconButton(
+                                icon: Icon(
+                                  user.isActive ? Icons.lock_open : Icons.lock, 
+                                  color: user.isActive ? Colors.green : Colors.grey
+                                ),
+                                tooltip: user.isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản',
+                                onPressed: () async {
+                                  final success = await userProvider.toggleUserStatus(user.id);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(success 
+                                            ? (user.isActive ? 'Đã khóa tài khoản thành công!' : 'Đã mở khóa tài khoản thành công!') 
+                                            : 'Thao tác thất bại.'),
+                                        backgroundColor: success ? Colors.green : Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
                             IconButton(
                               icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-                              tooltip: 'Xóa tài khoản',
+                              tooltip: 'Xóa vĩnh viễn tài khoản',
                               onPressed: () => _showDeleteConfirmDialog(context, user, userProvider),
                             ),
                           ],

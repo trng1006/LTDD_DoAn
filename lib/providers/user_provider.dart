@@ -98,7 +98,7 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  // --- HÀM MỚI BỔ SUNG: Cập nhật Học kỳ cho Sinh viên ---
+  // --- HÀM MỚI: Cập nhật Học kỳ cho Sinh viên ---
   Future<bool> updateStudentSemester(String userId, String? semesterId) async {
     final index = _users.indexWhere((u) => u.id == userId);
     if (index == -1) return false;
@@ -119,6 +119,7 @@ class UserProvider with ChangeNotifier {
           'enrolledCourseIds': user.enrolledCourseIds,
           'taughtCourseIds': user.taughtCourseIds,
           'currentSemesterId': semesterId, // Cập nhật học kỳ ở đây
+          'isActive': user.isActive, // Giữ nguyên trạng thái hoạt động
         }),
       );
 
@@ -206,6 +207,44 @@ class UserProvider with ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('Lỗi khi hủy đăng ký môn học: $e');
+      return false;
+    }
+  }
+
+  // --- HÀM: Kích hoạt / Khóa tài khoản thành viên ---
+  Future<bool> toggleUserStatus(String userId) async {
+    final index = _users.indexWhere((u) => u.id == userId);
+    if (index == -1) return false;
+
+    final user = _users[index];
+    final targetStatus = !user.isActive; // Đảo ngược trạng thái hiện tại
+
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/users/$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': user.id,
+          'username': user.username,
+          'name': user.name,
+          'email': user.email,
+          'role': user.role,
+          'identity': user.identity,
+          'enrolledCourseIds': user.enrolledCourseIds,
+          'taughtCourseIds': user.taughtCourseIds,
+          'currentSemesterId': user.currentSemesterId,
+          'isActive': targetStatus, // Gửi trạng thái mới lên server
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _users[index] = user.copyWith(isActive: targetStatus);
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Lỗi khi thay đổi trạng thái tài khoản: $e');
       return false;
     }
   }

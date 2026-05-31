@@ -29,6 +29,7 @@ class UserBase(BaseModel):
     enrolledCourseIds: Optional[List[str]] = []
     taughtCourseIds: Optional[List[str]] = []
     currentSemesterId: Optional[str] = None
+    isActive: Optional[bool] = True # Mới: Trạng thái hoạt động của người dùng
 
 class TopicBase(BaseModel):
     id: Optional[str] = None
@@ -79,7 +80,6 @@ class CourseBase(BaseModel):
     semesterId: Optional[str] = None
 
 # --- Helper Mappings ---
-
 def map_user(row, course_ids=None):
     user_data = {
         "id": row["id"],
@@ -88,7 +88,8 @@ def map_user(row, course_ids=None):
         "email": row["email"],
         "role": row["role"],
         "identity": row["identity"],
-        "currentSemesterId": row["current_semester_id"]
+        "currentSemesterId": row["current_semester_id"],
+        "isActive": bool(row.get("is_active", 1)) # Mới: Trạng thái hoạt động của người dùng, mặc định là True nếu không có trường này trong DB
     }
     
     if row["role"] == 'student':
@@ -138,11 +139,18 @@ def login(req: LoginRequest):
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = conn.cursor(dictionary=True)
-        query = "SELECT id, username, name, email, role, identity, current_semester_id, password FROM users WHERE (id = %s OR email = %s OR identity = %s OR username = %s) AND password = %s"
+        #Thêm cột is_active để kiểm tra trạng thái hoạt động của người dùng trong quá trình đăng nhập
+        query = "SELECT id, username, name, email, role, identity, current_semester_id, password, is_active FROM users WHERE (id = %s OR email = %s OR identity = %s OR username = %s) AND password = %s"
         cursor.execute(query, (req.identity, req.identity, req.identity, req.identity, req.password))
         user = cursor.fetchone()
         
         if user:
+            # KIỂM TRA TÀI KHOẢN CÓ BỊ KHÓA KHÔNG
+            if not bool(user.get("is_active", 1)):
+                cursor.close()
+                conn.close()
+                raise HTTPException(status_code=403, detail="Tài khoản của bạn đã bị khóa.")
+            
             course_ids = []
             if user['role'] == 'student':
                 cursor.execute("SELECT course_id FROM student_courses WHERE user_id = %s", (user['id'],))
@@ -159,6 +167,8 @@ def login(req: LoginRequest):
         cursor.close()
         conn.close()
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    except HTTPException as he:
+        raise he
     except Exception as e:
         if conn and conn.is_connected(): conn.close()
         raise HTTPException(status_code=500, detail=str(e))
@@ -167,10 +177,11 @@ def login(req: LoginRequest):
 def get_users(role: Optional[str] = None):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
+    # Thêm cột is_active để quản lý trạng thái hoạt động của người dùng, mặc định là True nếu không có trường này trong DB
     if role:
-        cursor.execute("SELECT id, username, name, email, role, identity, current_semester_id FROM users WHERE role = %s", (role,))
+        cursor.execute("SELECT id, username, name, email, role, identity, current_semester_id, is_active FROM users WHERE role = %s", (role,))
     else:
-        cursor.execute("SELECT id, username, name, email, role, identity, current_semester_id FROM users")
+        cursor.execute("SELECT id, username, name, email, role, identity, current_semester_id, is_active FROM users")
     users = cursor.fetchall()
 
     mapped_users = []
@@ -194,8 +205,8 @@ def create_user(user: UserBase):
     try:
         cursor = conn.cursor()
         conn.start_transaction()
-        query = "INSERT INTO users (id, username, name, email, password, role, identity, current_semester_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-        cursor.execute(query, (user.id, user.username or user.id, user.name, user.email, user.password or '123', user.role, user.identity, user.currentSemesterId))
+        query = "INSERT INTO users (id, username, name, email, password, role, identity, current_semester_id, is_active) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        cursor.execute(query, (user.id, user.username or user.id, user.name, user.email, user.password or '123', user.role, user.identity, user.currentSemesterId, user.isActive))
 
         if user.role == 'student' and user.enrolledCourseIds:
             for c_id in user.enrolledCourseIds:
@@ -223,8 +234,8 @@ def update_user(user_id: str, user: UserBase):
     try:
         cursor = conn.cursor()
         conn.start_transaction()
-        query = "UPDATE users SET username=%s, name=%s, email=%s, role=%s, identity=%s, current_semester_id=%s WHERE id=%s"
-        cursor.execute(query, (user.username or user.id, user.name, user.email, user.role, user.identity, user.currentSemesterId, user_id))
+        query = "UPDATE users SET username=%s, name=%s, email=%s, role=%s, identity=%s, current_semester_id=%s, is_active=%s WHERE id=%s"
+        cursor.execute(query, (user.username or user.id, user.name, user.email, user.role, user.identity, user.currentSemesterId, user.isActive, user_id))
 
         if user.role == 'student':
             cursor.execute("DELETE FROM student_courses WHERE user_id = %s", (user_id,))

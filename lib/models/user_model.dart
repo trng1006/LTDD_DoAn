@@ -8,7 +8,7 @@ class UserModel {
   final String? currentSemesterId;
   final List<String> enrolledCourseIds;
   final List<String> taughtCourseIds;
-
+  final bool isActive; // Trạng thái hoạt động của người dùng
   UserModel({
     required this.id,
     this.username = '',
@@ -19,6 +19,7 @@ class UserModel {
     this.currentSemesterId,
     this.enrolledCourseIds = const [],
     this.taughtCourseIds = const [],
+    required this.isActive, // Trạng thái hoạt động của người dùng
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +33,7 @@ class UserModel {
       currentSemesterId: json['currentSemesterId']?.toString(),
       enrolledCourseIds: List<String>.from(json['enrolledCourseIds'] ?? []),
       taughtCourseIds: List<String>.from(json['taughtCourseIds'] ?? []),
+      isActive: json['isActive'] is bool ? json['isActive'] : (json['isActive'] == 1 || json['isActive'] == null),// Mặc định là true nếu không có trường này trong JSON hoặc nếu giá trị là 1
     );
   }
 
@@ -46,6 +48,7 @@ class UserModel {
       'currentSemesterId': currentSemesterId,
       'enrolledCourseIds': enrolledCourseIds,
       'taughtCourseIds': taughtCourseIds,
+      'isActive': isActive, // Trạng thái hoạt động của người dùng
     };
   }
 
@@ -59,6 +62,7 @@ class UserModel {
     String? currentSemesterId,
     List<String>? enrolledCourseIds,
     List<String>? taughtCourseIds,
+    bool? isActive,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -70,6 +74,7 @@ class UserModel {
       currentSemesterId: currentSemesterId ?? this.currentSemesterId,
       enrolledCourseIds: enrolledCourseIds ?? this.enrolledCourseIds,
       taughtCourseIds: taughtCourseIds ?? this.taughtCourseIds,
+      isActive: isActive ?? this.isActive, // Trạng thái hoạt động của người dùng
     );
   }
 }

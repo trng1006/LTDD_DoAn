@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS `users` (
     FOREIGN KEY (`current_semester_id`) REFERENCES `semesters`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- Thêm cột is_active để quản lý trạng thái hoạt động của người dùng (mới)
+ALTER TABLE `users` ADD COLUMN `is_active` BOOLEAN DEFAULT TRUE;
 -- 3. Bảng Môn học
 CREATE TABLE IF NOT EXISTS `courses` (
     `id` VARCHAR(50) PRIMARY KEY,
