@@ -10,6 +10,34 @@ class GroupProvider with ChangeNotifier {
   List<GroupModel> get groups => _groups;
   bool get isLoading => _isLoading;
 
+  /// Nhóm mà [userId] đang tham gia (member hoặc pending) trong [courseId], nếu có.
+  GroupModel? groupOfUserInCourse(String userId, String courseId) {
+    for (final g in _groups) {
+      if (g.courseId == courseId &&
+          (g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId))) {
+        return g;
+      }
+    }
+    return null;
+  }
+
+  /// Nhóm mà [userId] làm TRƯỞNG NHÓM trong [courseId], nếu có.
+  /// Dùng cho màn Chọn đề tài: chỉ trưởng nhóm mới đăng ký, và phải đúng nhóm của môn đó.
+  GroupModel? leaderGroupInCourse(String userId, String courseId) {
+    for (final g in _groups) {
+      if (g.courseId == courseId && g.leaderId == userId) {
+        return g;
+      }
+    }
+    return null;
+  }
+
+  /// Kiểm tra [userId] đã thuộc nhóm nào (bất kỳ môn) chưa.
+  bool isInAnyGroup(String userId) {
+    return _groups.any((g) =>
+        g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId));
+  }
+
   GroupProvider() {
     fetchGroups();
   }

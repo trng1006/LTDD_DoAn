@@ -27,6 +27,13 @@ class TopicProvider with ChangeNotifier {
     return _apiService.getAvailableTopics(courseId: courseId);
   }
 
+  /// Lấy TẤT CẢ đề tài của một môn học (cả còn trống lẫn đã đầy).
+  /// Dùng cho màn hình Chọn đề tài để hiển thị "số đề tài có thể chọn / tổng số đề tài".
+  Future<List<TopicModel>> getTopicsByCourse(String courseId) async {
+    final all = await _apiService.getTopics();
+    return all.where((t) => t.courseId == courseId).toList();
+  }
+
   Future<void> addTopic(TopicModel topic) async {
     _isLoading = true;
     notifyListeners();
