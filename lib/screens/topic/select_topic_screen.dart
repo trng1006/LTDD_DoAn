@@ -24,7 +24,8 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
   String? _selectedTopicId;
 
   /// Nhóm đã có đề tài từ trước hay chưa (để đổi nhãn "Chọn"/"Đổi").
-  bool get _hasTopic => widget.group.topicId != null && widget.group.topicId!.isNotEmpty;
+  bool get _hasTopic =>
+      widget.group.topicId != null && widget.group.topicId!.isNotEmpty;
 
   // Bảng màu + icon Lucide gán luân phiên cho từng đề tài để giống mẫu.
   static const List<_TopicStyle> _styles = [
@@ -45,9 +46,9 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
 
   Future<void> _loadTopics() async {
     setState(() => _isLoading = true);
-    final topics = await context
-        .read<TopicProvider>()
-        .getAvailableTopics(courseId: widget.group.courseId);
+    final topics = await context.read<TopicProvider>().getAvailableTopics(
+      courseId: widget.group.courseId,
+    );
     if (!mounted) return;
     setState(() {
       _topics = topics;
@@ -64,7 +65,9 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
     if (widget.group.memberIds.length < widget.group.minMembers) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Nhóm chưa đủ thành viên tối thiểu (${widget.group.memberIds.length}/${widget.group.minMembers}). Vui lòng bổ sung thành viên trước khi đăng ký.'),
+          content: Text(
+            'Nhóm chưa đủ thành viên tối thiểu (${widget.group.memberIds.length}/${widget.group.minMembers}). Vui lòng bổ sung thành viên trước khi đăng ký.',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -73,10 +76,10 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
 
     setState(() => _isSubmitting = true);
     final error = await context.read<GroupProvider>().registerTopic(
-          widget.group.id,
-          _selectedTopicId!,
-          user.id,
-        );
+      widget.group.id,
+      _selectedTopicId!,
+      user.id,
+    );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
@@ -84,7 +87,11 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
     if (error == null) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(_hasTopic ? 'Đổi đề tài thành công!' : 'Đăng ký đề tài thành công!'),
+          content: Text(
+            _hasTopic
+                ? 'Đã gửi yêu cầu đổi đề tài. Chờ giảng viên duyệt.'
+                : 'Đã gửi yêu cầu đăng ký đề tài. Chờ giảng viên duyệt.',
+          ),
           backgroundColor: const Color(0xFF22C55E),
         ),
       );
@@ -98,7 +105,8 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final courseName = context
+    final courseName =
+        context
             .watch<CourseProvider>()
             .getCourseById(widget.group.courseId)
             ?.name ??
@@ -147,7 +155,12 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(8, MediaQuery.of(context).padding.top + 8, 16, 28),
+      padding: EdgeInsets.fromLTRB(
+        8,
+        MediaQuery.of(context).padding.top + 8,
+        16,
+        28,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1D6BF3), Color(0xFF2F8BFF)],
@@ -200,7 +213,10 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
                 color: const Color(0xFFEAF1FF),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(LucideIcons.bookMarked, color: Color(0xFF2F6BFF)),
+              child: const Icon(
+                LucideIcons.bookMarked,
+                color: Color(0xFF2F6BFF),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -351,12 +367,19 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
   }
 
   Widget _buildStatusBadge(bool selected) {
-    final Color bg = selected ? const Color(0xFFFDE8E8) : const Color(0xFFE9F8EF);
-    final Color fg = selected ? const Color(0xFFE5484D) : const Color(0xFF22A65A);
+    final Color bg = selected
+        ? const Color(0xFFFDE8E8)
+        : const Color(0xFFE9F8EF);
+    final Color fg = selected
+        ? const Color(0xFFE5484D)
+        : const Color(0xFF22A65A);
     final String text = selected ? 'Đã chọn' : 'Còn trống';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Text(
         text,
         style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600),
@@ -367,7 +390,12 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
   Widget _buildBottomBar() {
     final bool enabled = _selectedTopicId != null && !_isSubmitting;
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        MediaQuery.of(context).padding.bottom + 12,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -388,20 +416,30 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
               onPressed: enabled ? _submit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2F6BFF),
-                disabledBackgroundColor: const Color(0xFF2F6BFF).withValues(alpha: 0.4),
+                disabledBackgroundColor: const Color(
+                  0xFF2F6BFF,
+                ).withValues(alpha: 0.4),
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: _isSubmitting
                   ? const SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : Text(
                       _hasTopic ? 'Đổi đề tài' : 'Tiếp tục',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
             ),
           ),

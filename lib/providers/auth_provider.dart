@@ -22,6 +22,21 @@ class AuthProvider with ChangeNotifier {
     if (userStr != null) {
       _user = UserModel.fromJson(jsonDecode(userStr));
       notifyListeners();
+      await _refreshCachedUser();
+    }
+  }
+
+  Future<void> _refreshCachedUser() async {
+    final cachedUser = _user;
+    if (cachedUser == null) return;
+    final users = await _apiService.getUsers(role: cachedUser.role);
+    try {
+      final freshUser = users.firstWhere((user) => user.id == cachedUser.id);
+      _user = freshUser;
+      await _saveUser(freshUser);
+      notifyListeners();
+    } catch (_) {
+      // Keep the cached user when the backend is unavailable or the account is missing.
     }
   }
 
@@ -52,7 +67,12 @@ class AuthProvider with ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  Future<bool> register(String name, String email, String password, String identity) async {
+  Future<bool> register(
+    String name,
+    String email,
+    String password,
+    String identity,
+  ) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -72,11 +92,8 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> updateUser(String name, String email) async {
     if (_user == null) return false;
-    
-    final updatedUser = _user!.copyWith(
-      name: name,
-      email: email,
-    );
+
+    final updatedUser = _user!.copyWith(name: name, email: email);
 
     final success = await _apiService.updateUser(updatedUser);
     if (success) {
@@ -87,9 +104,16 @@ class AuthProvider with ChangeNotifier {
     return success;
   }
 
-  Future<Map<String, dynamic>> changePassword(String oldPassword, String newPassword) async {
+  Future<Map<String, dynamic>> changePassword(
+    String oldPassword,
+    String newPassword,
+  ) async {
     if (_user == null) return {'success': false, 'message': 'Chưa đăng nhập'};
-    return await _apiService.changePassword(_user!.id, oldPassword, newPassword);
+    return await _apiService.changePassword(
+      _user!.id,
+      oldPassword,
+      newPassword,
+    );
   }
 
   Future<void> logout() async {

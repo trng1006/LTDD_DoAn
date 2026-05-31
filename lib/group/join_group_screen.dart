@@ -29,8 +29,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
     // Ưu tiên lớp được truyền sang; nếu không thì chọn lớp đầu tiên SV đang học.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthProvider>().user;
-      final initial =
-          widget.initialCourseId ??
+      final initial = widget.initialCourseId ??
           (user != null && user.enrolledCourseIds.isNotEmpty
               ? user.enrolledCourseIds.first
               : null);
@@ -53,9 +52,9 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
       _hasSearched = true;
     });
     final groups = await context.read<GroupProvider>().searchGroups(
-      courseId: _selectedCourseId,
-      search: _searchController.text.trim(),
-    );
+          courseId: _selectedCourseId,
+          search: _searchController.text.trim(),
+        );
     if (!mounted) return;
     setState(() {
       _results = groups;
@@ -84,10 +83,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
     final messenger = ScaffoldMessenger.of(context);
     if (error == null) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Đã gửi yêu cầu gia nhập!'),
-          backgroundColor: Colors.green,
-        ),
+        const SnackBar(content: Text('Đã gửi yêu cầu gia nhập!'), backgroundColor: Colors.green),
       );
       _loadGroups(); // làm mới để hiển thị trạng thái "Đang chờ"
     } else if (error.contains('nhóm khác') || error.contains('1 nhóm')) {
@@ -104,13 +100,8 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final allCourses = context.watch<CourseProvider>().courses;
-    final enrolledCourses = allCourses
-        .where((c) => user?.enrolledCourseIds.contains(c.id) ?? false)
-        .toList();
-    final selectedCourseId =
-        enrolledCourses.any((c) => c.id == _selectedCourseId)
-        ? _selectedCourseId
-        : null;
+    final enrolledCourses =
+        allCourses.where((c) => user?.enrolledCourseIds.contains(c.id) ?? false).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tham gia nhóm')),
@@ -121,21 +112,15 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  key: ValueKey(_selectedCourseId),
                   isExpanded: true,
-                  initialValue: selectedCourseId,
+                  initialValue: _selectedCourseId,
                   decoration: const InputDecoration(
                     labelText: 'Môn học',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.book_outlined),
                   ),
                   items: enrolledCourses
-                      .map(
-                        (CourseModel c) => DropdownMenuItem(
-                          value: c.id,
-                          child: Text(c.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
+                      .map((CourseModel c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
                       .toList(),
                   onChanged: (value) {
                     setState(() => _selectedCourseId = value);
@@ -185,29 +170,20 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
         final group = _results[index];
         final bool isMember = group.memberIds.contains(userId);
         final bool isPending =
-            group.pendingMemberIds.contains(userId) ||
-            _pendingRequests.contains(group.id);
+            group.pendingMemberIds.contains(userId) || _pendingRequests.contains(group.id);
         final bool isFull = group.memberIds.length >= group.maxMembers;
         final bool isProcessing = _pendingRequests.contains(group.id);
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: CircleAvatar(
               backgroundColor: Colors.blue.shade100,
               child: const Icon(Icons.groups_rounded, color: Colors.blue),
             ),
-            title: Text(
-              group.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            title: Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(
               '${group.memberIds.length}/${group.maxMembers} thành viên • Trưởng: ${group.leaderId}',
             ),
@@ -233,22 +209,13 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
   }) {
     if (isProcessing) {
       return const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
+        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2));
     }
     if (isMember) {
-      return const Text(
-        'Đã ở trong nhóm',
-        style: TextStyle(color: Colors.green),
-      );
+      return const Text('Đã ở trong nhóm', style: TextStyle(color: Colors.green));
     }
     if (isPending) {
-      return const Text(
-        'Đang chờ duyệt',
-        style: TextStyle(color: Colors.orange),
-      );
+      return const Text('Đang chờ duyệt', style: TextStyle(color: Colors.orange));
     }
     if (isFull) {
       return const Text('Đã đầy', style: TextStyle(color: Colors.grey));

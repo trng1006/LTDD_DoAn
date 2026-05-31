@@ -14,10 +14,22 @@ class GroupProvider with ChangeNotifier {
     fetchGroups();
   }
 
-  Future<void> fetchGroups({String? courseId}) async {
+  Future<void> fetchGroups({
+    String? courseId,
+    String? search,
+    String? topicId,
+    String? lecturerId,
+    String? status,
+  }) async {
     _isLoading = true;
     notifyListeners();
-    _groups = await _apiService.getGroups(courseId: courseId);
+    _groups = await _apiService.getGroups(
+      courseId: courseId,
+      search: search,
+      topicId: topicId,
+      lecturerId: lecturerId,
+      status: status,
+    );
     _isLoading = false;
     notifyListeners();
   }
@@ -81,7 +93,11 @@ class GroupProvider with ChangeNotifier {
     if (success) await fetchGroups();
   }
 
-  Future<void> updateGroupStatus(String groupId, String status, {bool? isLocked}) async {
+  Future<void> updateGroupStatus(
+    String groupId,
+    String status, {
+    bool? isLocked,
+  }) async {
     final group = _groups.firstWhere((g) => g.id == groupId);
     final updatedGroup = group.copyWith(status: status, isLocked: isLocked);
     bool success = await _apiService.updateGroup(updatedGroup);
@@ -102,7 +118,9 @@ class GroupProvider with ChangeNotifier {
 
   GroupModel? groupOfUserInCourse(String userId, String courseId) {
     try {
-      return _groups.firstWhere((g) => g.courseId == courseId && g.memberIds.contains(userId));
+      return _groups.firstWhere(
+        (g) => g.courseId == courseId && g.memberIds.contains(userId),
+      );
     } catch (_) {
       return null;
     }
@@ -112,7 +130,10 @@ class GroupProvider with ChangeNotifier {
     return _groups.any((g) => g.memberIds.contains(userId));
   }
 
-  Future<List<GroupModel>> searchGroups({String? search, String? courseId}) async {
+  Future<List<GroupModel>> searchGroups({
+    String? search,
+    String? courseId,
+  }) async {
     _isLoading = true;
     notifyListeners();
     final results = await _apiService.getGroups(
@@ -125,7 +146,41 @@ class GroupProvider with ChangeNotifier {
     return results;
   }
 
-  Future<String?> registerTopic(String groupId, String topicId, String leaderId) async {
-    return await _apiService.registerTopic(groupId, topicId, leaderId);
+  Future<String?> registerTopic(
+    String groupId,
+    String topicId,
+    String leaderId,
+  ) async {
+    final error = await _apiService.registerTopic(groupId, topicId, leaderId);
+    if (error == null) {
+      await fetchGroups();
+    }
+    return error;
+  }
+
+  Future<String?> approveTopicRegistration(
+    String groupId,
+    String lecturerId,
+  ) async {
+    final error = await _apiService.approveTopicRegistration(
+      groupId,
+      lecturerId,
+    );
+    await fetchGroups(lecturerId: lecturerId);
+    return error;
+  }
+
+  Future<String?> rejectTopicRegistration(
+    String groupId,
+    String lecturerId, {
+    String? reason,
+  }) async {
+    final error = await _apiService.rejectTopicRegistration(
+      groupId,
+      lecturerId,
+      reason: reason,
+    );
+    await fetchGroups(lecturerId: lecturerId);
+    return error;
   }
 }

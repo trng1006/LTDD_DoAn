@@ -25,37 +25,56 @@ class _TopicListScreenState extends State<TopicListScreen> {
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reloadData());
+  }
+
+  Future<void> _reloadData() async {
+    final user = context.read<AuthProvider>().user;
+    await context.read<CourseProvider>().fetchAllData();
+    if (!mounted) return;
+    if (user?.role == 'lecturer') {
+      await context.read<TopicProvider>().fetchTopics(lecturerId: user!.id);
+      if (!mounted) return;
+      await context.read<GroupProvider>().fetchGroups(lecturerId: user.id);
+    } else {
+      await context.read<TopicProvider>().fetchTopics();
+      if (!mounted) return;
+      await context.read<GroupProvider>().fetchGroups();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final topicProvider = context.watch<TopicProvider>();
     final authProvider = context.watch<AuthProvider>();
     final courseProvider = context.watch<CourseProvider>();
     final user = authProvider.user;
-    
+
     final bool isLecturer = user?.role == 'lecturer';
     final bool isAdmin = user?.role == 'admin';
     final bool isStudent = user?.role == 'student';
 
     List<TopicModel> displayTopics = topicProvider.topics.where((t) {
-      final matchesSearch = t.title.toLowerCase().contains(_searchQuery.toLowerCase()) || 
-                          t.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      
-      bool matchesCourse = true;
-      if (_selectedCourseId != null && _selectedCourseId != 'all') {
-        matchesCourse = t.courseId == _selectedCourseId;
-      } else {
-        if (isStudent && user != null) {
-          matchesCourse = user.enrolledCourseIds.contains(t.courseId);
-        } else if (isLecturer && user != null) {
-          // Lecturer sees topics for courses they teach OR topics they created
-          matchesCourse = user.taughtCourseIds.contains(t.courseId) || t.lecturerId == user.id;
-        }
-      }
+      final query = _searchQuery.toLowerCase();
+      final matchesSearch =
+          t.title.toLowerCase().contains(query) ||
+          t.description.toLowerCase().contains(query);
+
+      final hasCourseFilter =
+          _selectedCourseId != null && _selectedCourseId != 'all';
+      final matchesCourse = !hasCourseFilter || t.courseId == _selectedCourseId;
 
       if (isLecturer && user != null) {
-        // Double check: if they filter by a specific course, they still only see their stuff or their course's stuff
-        return matchesSearch && matchesCourse;
+        return matchesSearch && matchesCourse && t.lecturerId == user.id;
       }
-      
+      if (isStudent && user != null) {
+        return matchesSearch &&
+            matchesCourse &&
+            user.enrolledCourseIds.contains(t.courseId);
+      }
+
       return matchesSearch && matchesCourse;
     }).toList();
 
@@ -67,7 +86,11 @@ class _TopicListScreenState extends State<TopicListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isLecturer ? 'Đề tài của tôi' : (isAdmin ? 'Tất cả đề tài' : 'Danh sách đề tài')),
+        title: Text(
+          isLecturer
+              ? 'Đề tài của tôi'
+              : (isAdmin ? 'Tất cả đề tài' : 'Danh sách đề tài'),
+        ),
         actions: [
           if (isLecturer || isAdmin)
             IconButton(
@@ -83,15 +106,20 @@ class _TopicListScreenState extends State<TopicListScreen> {
             child: topicProvider.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : displayTopics.isEmpty
-                    ? const Center(child: Text('Không tìm thấy đề tài nào'))
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: displayTopics.length,
-                        itemBuilder: (context, index) {
-                          final topic = displayTopics[index];
-                          return _buildTopicCard(context, topic, isLecturer, isAdmin);
-                        },
-                      ),
+                ? const Center(child: Text('Không tìm thấy đề tài nào'))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: displayTopics.length,
+                    itemBuilder: (context, index) {
+                      final topic = displayTopics[index];
+                      return _buildTopicCard(
+                        context,
+                        topic,
+                        isLecturer,
+                        isAdmin,
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -100,10 +128,16 @@ class _TopicListScreenState extends State<TopicListScreen> {
 
   Widget _buildSearchAndFilter(CourseProvider courseProvider, UserModel? user) {
     final courses = courseProvider.courses;
-    
+
     List<CourseModel> relevantCourses;
     if (user != null && user.role == 'student') {
-      relevantCourses = courses.where((c) => user.enrolledCourseIds.contains(c.id)).toList();
+      relevantCourses = courses
+          .where((c) => user.enrolledCourseIds.contains(c.id))
+          .toList();
+    } else if (user != null && user.role == 'lecturer') {
+      relevantCourses = courses
+          .where((c) => user.taughtCourseIds.contains(c.id))
+          .toList();
     } else {
       relevantCourses = courses;
     }
@@ -117,7 +151,9 @@ class _TopicListScreenState extends State<TopicListScreen> {
             decoration: InputDecoration(
               hintText: 'Tìm kiếm đề tài...',
               prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
             onChanged: (value) => setState(() => _searchQuery = value),
@@ -131,12 +167,23 @@ class _TopicListScreenState extends State<TopicListScreen> {
                   initialValue: _selectedCourseId ?? 'all',
                   decoration: const InputDecoration(
                     labelText: 'Môn học',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                     border: OutlineInputBorder(),
                   ),
                   items: [
-                    const DropdownMenuItem(value: 'all', child: Text('Tất cả môn học')),
-                    ...relevantCourses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                    const DropdownMenuItem(
+                      value: 'all',
+                      child: Text('Tất cả môn học'),
+                    ),
+                    ...relevantCourses.map(
+                      (c) => DropdownMenuItem(
+                        value: c.id,
+                        child: Text(c.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
                   ],
                   onChanged: (val) => setState(() => _selectedCourseId = val),
                 ),
@@ -147,8 +194,14 @@ class _TopicListScreenState extends State<TopicListScreen> {
                 icon: const Icon(Icons.sort),
                 onSelected: (val) => setState(() => _sortBy = val),
                 itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'Tiêu đề', child: Text('Sắp xếp theo Tiêu đề')),
-                  const PopupMenuItem(value: 'Số lượng nhóm', child: Text('Sắp xếp theo Số lượng nhóm')),
+                  const PopupMenuItem(
+                    value: 'Tiêu đề',
+                    child: Text('Sắp xếp theo Tiêu đề'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'Số lượng nhóm',
+                    child: Text('Sắp xếp theo Số lượng nhóm'),
+                  ),
                 ],
               ),
             ],
@@ -158,15 +211,20 @@ class _TopicListScreenState extends State<TopicListScreen> {
     );
   }
 
-  Widget _buildTopicCard(BuildContext context, TopicModel topic, bool isLecturer, bool isAdmin) {
+  Widget _buildTopicCard(
+    BuildContext context,
+    TopicModel topic,
+    bool isLecturer,
+    bool isAdmin,
+  ) {
     final now = DateTime.now();
     final bool isStarted = now.isAfter(topic.startTime);
     final bool isEnded = now.isAfter(topic.endTime);
     final bool isFull = topic.currentGroups >= topic.maxGroups;
-    
+
     Color statusColor = Colors.green;
     String statusText = 'Đang mở';
-    
+
     if (!isStarted) {
       statusColor = Colors.orange;
       statusText = 'Chưa bắt đầu';
@@ -196,18 +254,31 @@ class _TopicListScreenState extends State<TopicListScreen> {
                   Expanded(
                     child: Text(
                       topic.title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
                   if (isLecturer || isAdmin)
                     PopupMenuButton(
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
-                        const PopupMenuItem(value: 'delete', child: Text('Xoá')),
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Chỉnh sửa'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Xoá'),
+                        ),
                       ],
                       onSelected: (val) {
-                        if (val == 'edit') _showAddEditTopic(context, topic: topic);
-                        if (val == 'delete') context.read<TopicProvider>().deleteTopic(topic.id);
+                        if (val == 'edit') {
+                          _showAddEditTopic(context, topic: topic);
+                        }
+                        if (val == 'delete') {
+                          context.read<TopicProvider>().deleteTopic(topic.id);
+                        }
                       },
                     ),
                 ],
@@ -226,7 +297,11 @@ class _TopicListScreenState extends State<TopicListScreen> {
                   const SizedBox(width: 4),
                   Text(
                     statusText,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
                   ),
                   const Spacer(),
                   Text(
@@ -241,7 +316,11 @@ class _TopicListScreenState extends State<TopicListScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.people_outline, size: 18, color: isFull ? Colors.red : Colors.green),
+                      Icon(
+                        Icons.people_outline,
+                        size: 18,
+                        color: isFull ? Colors.red : Colors.green,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${topic.currentGroups}/${topic.maxGroups} nhóm',
@@ -255,7 +334,10 @@ class _TopicListScreenState extends State<TopicListScreen> {
                   if (isAdmin)
                     Text(
                       'GV: ${topic.lecturerId}',
-                      style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                 ],
               ),
@@ -266,27 +348,42 @@ class _TopicListScreenState extends State<TopicListScreen> {
     );
   }
 
-  void _showTopicDetails(BuildContext context, TopicModel topic, bool canManage) {
+  void _showTopicDetails(
+    BuildContext context,
+    TopicModel topic,
+    bool canManage,
+  ) {
     final groupProvider = context.read<GroupProvider>();
     final user = context.read<AuthProvider>().user;
     final now = DateTime.now();
-    
+
     final bool isStarted = now.isAfter(topic.startTime);
     final bool isEnded = now.isAfter(topic.endTime);
     final bool isOpen = isStarted && !isEnded;
 
     final myGroup = groupProvider.groups.firstWhere(
-      (g) => g.leaderId == user?.id && g.courseId == topic.courseId, 
-      orElse: () => GroupModel(id: '', name: '', description: '', courseId: '', maxMembers: 0, memberIds: [], pendingMemberIds: [], leaderId: '')
+      (g) => g.leaderId == user?.id && g.courseId == topic.courseId,
+      orElse: () => GroupModel(
+        id: '',
+        name: '',
+        description: '',
+        courseId: '',
+        maxMembers: 0,
+        memberIds: [],
+        pendingMemberIds: [],
+        leaderId: '',
+      ),
     );
 
     final bool canRegister = myGroup.id.isNotEmpty && !myGroup.isLocked;
-    const int minMembers = 3;
+    final int minMembers = myGroup.minMembers;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.6,
         maxChildSize: 0.9,
@@ -298,71 +395,146 @@ class _TopicListScreenState extends State<TopicListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(topic.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+              Text(
+                topic.title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text('Giảng viên: ${topic.lecturerId}', style: const TextStyle(fontStyle: FontStyle.italic)),
+              Text(
+                'Giảng viên: ${topic.lecturerId}',
+                style: const TextStyle(fontStyle: FontStyle.italic),
+              ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Column(
                   children: [
-                    _timeRow(Icons.play_circle_outline, 'Bắt đầu:', _dateFormat.format(topic.startTime)),
+                    _timeRow(
+                      Icons.play_circle_outline,
+                      'Bắt đầu:',
+                      _dateFormat.format(topic.startTime),
+                    ),
                     const SizedBox(height: 4),
-                    _timeRow(Icons.stop_circle, 'Kết thúc:', _dateFormat.format(topic.endTime)),
+                    _timeRow(
+                      Icons.stop_circle,
+                      'Kết thúc:',
+                      _dateFormat.format(topic.endTime),
+                    ),
                   ],
                 ),
               ),
               const Divider(height: 32),
-              const Text('Mô tả chi tiết:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Mô tả chi tiết:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 8),
-              Text(topic.description, style: const TextStyle(fontSize: 16, height: 1.5)),
+              Text(
+                topic.description,
+                style: const TextStyle(fontSize: 16, height: 1.5),
+              ),
               const SizedBox(height: 32),
-              
+
               if (!canManage) ...[
                 if (!isOpen)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Text(
-                      isEnded ? 'Thời gian đăng ký đã kết thúc.' : 'Thời gian đăng ký chưa bắt đầu (Mở lúc ${_dateFormat.format(topic.startTime)}).',
+                      isEnded
+                          ? 'Thời gian đăng ký đã kết thúc.'
+                          : 'Thời gian đăng ký chưa bắt đầu (Mở lúc ${_dateFormat.format(topic.startTime)}).',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   )
                 else if (canRegister) ...[
                   if (myGroup.memberIds.length < minMembers)
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: Text(
                         'Cần tối thiểu $minMembers thành viên để đăng ký đề tài (Hiện có ${myGroup.memberIds.length}).',
-                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     )
                   else
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                        onPressed: topic.currentGroups < topic.maxGroups ? () {
-                          context.read<GroupProvider>().updateGroupStatus(myGroup.id, 'pending_approval');
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã gửi yêu cầu đăng ký đề tài! Chờ giảng viên duyệt.')));
-                        } : null,
-                        child: Text(topic.currentGroups < topic.maxGroups ? 'Đăng ký đề tài này' : 'Đã đủ số lượng nhóm'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: topic.currentGroups < topic.maxGroups
+                            ? () async {
+                                final error = await context
+                                    .read<GroupProvider>()
+                                    .registerTopic(
+                                      myGroup.id,
+                                      topic.id,
+                                      user?.id ?? '',
+                                    );
+                                if (!context.mounted) return;
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      error ??
+                                          'Đã gửi yêu cầu đăng ký đề tài! Chờ giảng viên duyệt.',
+                                    ),
+                                    backgroundColor: error == null
+                                        ? Colors.green
+                                        : Colors.red,
+                                  ),
+                                );
+                              }
+                            : null,
+                        child: Text(
+                          topic.currentGroups < topic.maxGroups
+                              ? 'Đăng ký đề tài này'
+                              : 'Đã đủ số lượng nhóm',
+                        ),
                       ),
                     ),
                 ] else
-                  const Center(child: Text('Bạn phải là trưởng nhóm để đăng ký đề tài.', style: TextStyle(fontStyle: FontStyle.italic))),
+                  const Center(
+                    child: Text(
+                      'Bạn phải là trưởng nhóm để đăng ký đề tài.',
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                  ),
               ],
-              
+
               if (canManage) ...[
-                const Text('Danh sách nhóm đăng ký:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'Danh sách nhóm đăng ký:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 16),
-                ...groupProvider.groups.where((g) => g.topicId == topic.id || (topic.id == 't1' && g.id == 'g1') || (topic.id == 't2' && g.id == 'g2')).map((g) => _buildGroupActionItem(context, g, topic.id)),
-              ]
+                ...groupProvider.groups
+                    .where((g) => g.topicId == topic.id)
+                    .map((g) => _buildGroupActionItem(context, g, topic.id)),
+              ],
             ],
           ),
         ),
@@ -375,117 +547,273 @@ class _TopicListScreenState extends State<TopicListScreen> {
       children: [
         Icon(icon, size: 14, color: Colors.blue),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
         const Spacer(),
         Text(time, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
 
-  Widget _buildGroupActionItem(BuildContext context, GroupModel group, String topicId) {
+  Widget _buildGroupActionItem(
+    BuildContext context,
+    GroupModel group,
+    String topicId,
+  ) {
+    final lecturerId = context.read<AuthProvider>().user?.id ?? '';
+    final statusText = switch (group.status) {
+      'approved' => 'Đã duyệt',
+      'rejected' => 'Đã từ chối',
+      'pending_approval' => 'Chờ duyệt',
+      _ => 'Đang tạo nhóm',
+    };
     return ListTile(
       leading: const CircleAvatar(child: Icon(Icons.groups)),
       title: Text(group.name),
-      subtitle: Text(group.status == 'approved' ? 'Đã duyệt' : 'Chờ duyệt'),
+      subtitle: Text(statusText),
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => GroupDetailScreen(group: group)));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GroupDetailScreen(group: group),
+          ),
+        );
       },
-      trailing: group.status == 'pending_approval' 
-        ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed: () {
-                  context.read<GroupProvider>().updateGroupStatus(group.id, 'approved', isLocked: true);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã duyệt đề tài cho nhóm!')));
-                }, 
-                child: const Text('Duyệt')
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () {
-                  context.read<GroupProvider>().updateGroupStatus(group.id, 'creating');
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã từ chối đăng ký.')));
-                }, 
-                child: const Text('Từ chối', style: TextStyle(color: Colors.red))
-              ),
-            ],
-          )
-        : const Icon(Icons.check_circle, color: Colors.green),
+      trailing: group.status == 'pending_approval'
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: () async {
+                    final error = await context
+                        .read<GroupProvider>()
+                        .approveTopicRegistration(group.id, lecturerId);
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(error ?? 'Đã duyệt đề tài cho nhóm!'),
+                        backgroundColor: error == null
+                            ? Colors.green
+                            : Colors.red,
+                      ),
+                    );
+                  },
+                  child: const Text('Duyệt'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () async {
+                    final error = await context
+                        .read<GroupProvider>()
+                        .rejectTopicRegistration(group.id, lecturerId);
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(error ?? 'Đã từ chối đăng ký.'),
+                        backgroundColor: error == null
+                            ? Colors.orange
+                            : Colors.red,
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Từ chối',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            )
+          : Icon(
+              group.status == 'rejected' ? Icons.cancel : Icons.check_circle,
+              color: group.status == 'rejected' ? Colors.red : Colors.green,
+            ),
     );
   }
 
   void _showAddEditTopic(BuildContext context, {TopicModel? topic}) {
     final titleController = TextEditingController(text: topic?.title);
     final descController = TextEditingController(text: topic?.description);
-    final maxController = TextEditingController(text: topic?.maxGroups.toString() ?? '3');
+    final maxController = TextEditingController(
+      text: topic?.maxGroups.toString() ?? '3',
+    );
     String? dialogSelectedCourseId = topic?.courseId;
-    
-    DateTime startTime = topic?.startTime ?? DateTime.now();
-    DateTime endTime = topic?.endTime ?? DateTime.now().add(const Duration(days: 30));
 
-    final courses = context.read<CourseProvider>().courses;
+    DateTime startTime = topic?.startTime ?? DateTime.now();
+    DateTime endTime =
+        topic?.endTime ?? DateTime.now().add(const Duration(days: 30));
+
+    final currentUser = context.read<AuthProvider>().user;
+    final allCourses = context.read<CourseProvider>().courses;
+    final courses = currentUser?.role == 'lecturer'
+        ? allCourses
+              .where(
+                (course) => currentUser!.taughtCourseIds.contains(course.id),
+              )
+              .toList()
+        : allCourses;
+    if (dialogSelectedCourseId == null && courses.length == 1) {
+      dialogSelectedCourseId = courses.first.id;
+    }
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
           title: Text(topic == null ? 'Thêm đề tài mới' : 'Chỉnh sửa đề tài'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: dialogSelectedCourseId,
-                  decoration: const InputDecoration(labelText: 'Môn học'),
-                  items: courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-                  onChanged: (val) => setStateDialog(() => dialogSelectedCourseId = val),
-                ),
-                const SizedBox(height: 8),
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Tên đề tài')),
-                const SizedBox(height: 8),
-                TextField(controller: descController, maxLines: 3, decoration: const InputDecoration(labelText: 'Mô tả')),
-                const SizedBox(height: 8),
-                TextField(controller: maxController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Số nhóm tối đa')),
-                const SizedBox(height: 16),
-                const Text('Lịch đăng ký:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                _datePickerTile(context, 'Bắt đầu', startTime, (date) => setStateDialog(() => startTime = date)),
-                _datePickerTile(context, 'Kết thúc', endTime, (date) => setStateDialog(() => endTime = date)),
-              ],
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (courses.isEmpty)
+                    const Text(
+                      'Tài khoản này chưa được phân công môn học.',
+                      style: TextStyle(color: Colors.red),
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue:
+                          courses.any((c) => c.id == dialogSelectedCourseId)
+                          ? dialogSelectedCourseId
+                          : null,
+                      decoration: const InputDecoration(labelText: 'Môn học'),
+                      items: courses
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Text(
+                                c.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setStateDialog(() => dialogSelectedCourseId = val),
+                    ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: 'Tên đề tài'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: descController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(labelText: 'Mô tả'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: maxController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Số nhóm tối đa',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Lịch đăng ký:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  _datePickerTile(
+                    context,
+                    'Bắt đầu',
+                    startTime,
+                    (date) => setStateDialog(() => startTime = date),
+                  ),
+                  _datePickerTile(
+                    context,
+                    'Kết thúc',
+                    endTime,
+                    (date) => setStateDialog(() => endTime = date),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Huỷ')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Huỷ'),
+            ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (dialogSelectedCourseId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn môn học')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Vui lòng chọn môn học')),
+                  );
+                  return;
+                }
+                final title = titleController.text.trim();
+                final maxGroups = int.tryParse(maxController.text.trim());
+                if (title.isEmpty || maxGroups == null || maxGroups < 1) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Vui lòng nhập tên đề tài và số nhóm hợp lệ',
+                      ),
+                    ),
+                  );
                   return;
                 }
                 final newTopic = TopicModel(
                   id: topic?.id ?? 't${DateTime.now().millisecondsSinceEpoch}',
-                  title: titleController.text,
-                  description: descController.text,
+                  title: title,
+                  description: descController.text.trim(),
                   courseId: dialogSelectedCourseId!,
-                  maxGroups: int.parse(maxController.text),
-                  lecturerId: context.read<AuthProvider>().user?.id ?? 'admin',
+                  maxGroups: maxGroups,
+                  lecturerId: topic?.lecturerId ?? currentUser?.id ?? 'admin',
                   startTime: startTime,
                   endTime: endTime,
                   currentGroups: topic?.currentGroups ?? 0,
                 );
-                
+
+                final topicProvider = context.read<TopicProvider>();
+                final lecturerFilter = currentUser?.role == 'lecturer'
+                    ? currentUser?.id
+                    : null;
+                final success = topic == null
+                    ? await topicProvider.addTopic(
+                        newTopic,
+                        lecturerId: lecturerFilter,
+                      )
+                    : await topicProvider.updateTopic(
+                        newTopic,
+                        lecturerId: lecturerFilter,
+                      );
+                if (!context.mounted) return;
                 if (topic == null) {
-                  context.read<TopicProvider>().addTopic(newTopic);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success ? 'Đã thêm đề tài.' : 'Không lưu được đề tài.',
+                      ),
+                      backgroundColor: success ? Colors.green : Colors.red,
+                    ),
+                  );
                 } else {
-                  context.read<TopicProvider>().updateTopic(newTopic);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success
+                            ? 'Đã cập nhật đề tài.'
+                            : 'Không lưu được đề tài.',
+                      ),
+                      backgroundColor: success ? Colors.green : Colors.red,
+                    ),
+                  );
                 }
-                Navigator.pop(context);
-              }, 
-              child: const Text('Lưu')
+                if (success) Navigator.pop(context);
+              },
+              child: const Text('Lưu'),
             ),
           ],
         ),
@@ -493,10 +821,18 @@ class _TopicListScreenState extends State<TopicListScreen> {
     );
   }
 
-  Widget _datePickerTile(BuildContext context, String label, DateTime date, Function(DateTime) onPicked) {
+  Widget _datePickerTile(
+    BuildContext context,
+    String label,
+    DateTime date,
+    Function(DateTime) onPicked,
+  ) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text('$label: ${_dateFormat.format(date)}', style: const TextStyle(fontSize: 13)),
+      title: Text(
+        '$label: ${_dateFormat.format(date)}',
+        style: const TextStyle(fontSize: 13),
+      ),
       trailing: const Icon(Icons.calendar_today, size: 18),
       onTap: () async {
         final pickedDate = await showDatePicker(
@@ -512,13 +848,15 @@ class _TopicListScreenState extends State<TopicListScreen> {
             initialTime: TimeOfDay.fromDateTime(date),
           );
           if (pickedTime != null) {
-            onPicked(DateTime(
-              pickedDate.year,
-              pickedDate.month,
-              pickedDate.day,
-              pickedTime.hour,
-              pickedTime.minute,
-            ));
+            onPicked(
+              DateTime(
+                pickedDate.year,
+                pickedDate.month,
+                pickedDate.day,
+                pickedTime.hour,
+                pickedTime.minute,
+              ),
+            );
           }
         }
       },

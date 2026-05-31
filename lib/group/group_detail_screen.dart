@@ -142,7 +142,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       text = 'Đã chốt đề tài';
     } else if (group.status == 'rejected') {
       color = Colors.red;
-      text = 'Đề tài bị từ chối';
+      text = 'Đăng ký đề tài bị từ chối';
     }
 
     return Container(

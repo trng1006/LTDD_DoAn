@@ -309,12 +309,28 @@ CREATE TABLE IF NOT EXISTS `system_settings` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- 7. Bang thong bao nguoi dung
+CREATE TABLE IF NOT EXISTS `notifications` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` VARCHAR(50) NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `message` TEXT NOT NULL,
+    `type` VARCHAR(50) DEFAULT 'general',
+    `data` TEXT,
+    `is_read` BOOLEAN DEFAULT FALSE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_notifications_user_created` (`user_id`, `created_at`),
+    INDEX `idx_notifications_user_read` (`user_id`, `is_read`)
+) ENGINE=InnoDB;
+
 -- Chèn dữ liệu cấu hình mặc định ban đầu (Seed data)
 REPLACE INTO `system_settings` (`key_name`, `value`, `description`) VALUES 
 ('registration_start', '2026-05-01', 'Ngày bắt đầu đăng ký đề tài'),
 ('registration_end', '2026-06-30', 'Ngày kết thúc đăng ký đề tài'),
 ('min_members', '3', 'Số thành viên tối thiểu trong một nhóm'),
-('max_members', '5', 'Số thành viên tối đa trong một nhóm');-- Thêm 8 Học kỳ
+('max_members', '5', 'Số thành viên tối đa trong một nhóm');
+-- Thêm 8 Học kỳ
 INSERT IGNORE INTO `semesters` (`id`, `name`, `is_active`) VALUES ('s1', 'Học kỳ 1', FALSE);
 INSERT IGNORE INTO `semesters` (`id`, `name`, `is_active`) VALUES ('s2', 'Học kỳ 2', FALSE);
 INSERT IGNORE INTO `semesters` (`id`, `name`, `is_active`) VALUES ('s3', 'Học kỳ 3', FALSE);
@@ -429,3 +445,12 @@ REPLACE INTO `courses` (`id`, `name`, `code`, `semester_id`) VALUES ('c_01011020
 REPLACE INTO `courses` (`id`, `name`, `code`, `semester_id`) VALUES ('c_0101102010', 'Chuyên đề công nghệ mới và chuyển đổi số', '0101102010', 's8');
 REPLACE INTO `courses` (`id`, `name`, `code`, `semester_id`) VALUES ('c_0101102011', 'Học máy nâng cao', '0101102011', 's8');
 REPLACE INTO `courses` (`id`, `name`, `code`, `semester_id`) VALUES ('c_0101102012', 'Khóa luận kỹ sư', '0101102012', 's8');
+
+-- Seed lại mapping demo sau khi REPLACE courses theo mã môn để tránh mất liên kết do đổi id môn.
+REPLACE INTO `student_courses` (`user_id`, `course_id`) VALUES
+('sv01', 'c_0101101956'), ('sv01', 'c_0101101969'), ('sv01', 'c_0101101976'),
+('sv02', 'c_0101101956'), ('sv02', 'c_0101101957'), ('sv02', 'c_0101101969');
+
+REPLACE INTO `lecturer_courses` (`user_id`, `course_id`) VALUES
+('gv01', 'c_0101101969'), ('gv01', 'c_0101101976'), ('gv01', 'c_0101101977'),
+('gv02', 'c_0101101956'), ('gv02', 'c_0101101957');
