@@ -12,6 +12,7 @@ import 'package:ungdungdangkinhomvachondetai/screens/notification/notification_s
 import 'package:ungdungdangkinhomvachondetai/screens/admin/manage_students_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/admin/statistics_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/admin/system_settings_screen.dart';
+import 'package:ungdungdangkinhomvachondetai/screens/profile/profile_screen.dart';
 
 export 'package:ungdungdangkinhomvachondetai/core/constants/app_routes.dart';
 
@@ -29,5 +30,6 @@ class AppPages {
     AppRoutes.manageUsers: (context) => const ManageStudentsScreen(),
     AppRoutes.statistics: (context) => const StatisticsScreen(),
     AppRoutes.systemSettings: (context) => const SystemSettingsScreen(),
+    AppRoutes.profile: (context) => const ProfileScreen(),
   };
 }

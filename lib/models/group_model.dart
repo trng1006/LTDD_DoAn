@@ -4,6 +4,7 @@ class GroupModel {
   final String description;
   final String courseId; // Added to associate group with a course
   final int maxMembers;
+  final int minMembers;
   final List<String> memberIds;
   final List<String> pendingMemberIds; // Added for flowchart step 5
   final String leaderId;
@@ -17,6 +18,7 @@ class GroupModel {
     required this.description,
     required this.courseId,
     required this.maxMembers,
+    this.minMembers = 2,
     required this.memberIds,
     required this.pendingMemberIds,
     required this.leaderId,
@@ -32,6 +34,7 @@ class GroupModel {
       description: json['description'] ?? '',
       courseId: json['courseId'] ?? '',
       maxMembers: json['maxMembers'] ?? 5,
+      minMembers: json['minMembers'] ?? 2,
       memberIds: List<String>.from(json['memberIds'] ?? []),
       pendingMemberIds: List<String>.from(json['pendingMemberIds'] ?? []),
       leaderId: json['leaderId'] ?? '',
@@ -48,6 +51,7 @@ class GroupModel {
       'description': description,
       'courseId': courseId,
       'maxMembers': maxMembers,
+      'minMembers': minMembers,
       'memberIds': memberIds,
       'pendingMemberIds': pendingMemberIds,
       'leaderId': leaderId,
@@ -62,6 +66,7 @@ class GroupModel {
     String? description,
     String? courseId,
     int? maxMembers,
+    int? minMembers,
     List<String>? memberIds,
     List<String>? pendingMemberIds,
     String? topicId,
@@ -74,6 +79,7 @@ class GroupModel {
       description: description ?? this.description,
       courseId: courseId ?? this.courseId,
       maxMembers: maxMembers ?? this.maxMembers,
+      minMembers: minMembers ?? this.minMembers,
       memberIds: memberIds ?? this.memberIds,
       pendingMemberIds: pendingMemberIds ?? this.pendingMemberIds,
       leaderId: leaderId,
