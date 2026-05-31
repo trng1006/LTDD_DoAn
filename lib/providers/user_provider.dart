@@ -10,13 +10,7 @@ class UserProvider with ChangeNotifier {
   
   bool isLoading = false;
 
-  List<UserModel> _users = [
-    UserModel(id: 'sv01', username: 'sv01', name: 'Lê Văn Cường', email: 'cuonglv@student.edu.vn', role: 'student', currentSemesterId: 's6', enrolledCourseIds: ['c1', 'c3', 'c7']),
-    UserModel(id: 'sv02', username: 'sv02', name: 'Phạm Minh Hoàng', email: 'hoangpm@student.edu.vn', role: 'student', currentSemesterId: 's6', enrolledCourseIds: ['c1', 'c2', 'c3']),
-    UserModel(id: 'gv01', username: 'gv01', name: 'TS. Nguyễn Văn A', email: 'nva@fit.edu.vn', role: 'lecturer', taughtCourseIds: ['c3', 'c7', 'c8']),
-    UserModel(id: 'gv02', username: 'gv02', name: 'ThS. Trần Thị B', email: 'ttb@fit.edu.vn', role: 'lecturer', taughtCourseIds: ['c1', 'c2']),
-    UserModel(id: 'admin', username: 'admin', name: 'Quản trị viên', email: 'admin@gmail.com', role: 'admin'),
-  ];
+  List<UserModel> _users = [];
 
   List<UserModel> get users => _users;
 
@@ -100,6 +94,42 @@ class UserProvider with ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('Lỗi khi thực hiện xóa người dùng: $e');
+      return false;
+    }
+  }
+
+  // --- HÀM MỚI BỔ SUNG: Cập nhật Học kỳ cho Sinh viên ---
+  Future<bool> updateStudentSemester(String userId, String? semesterId) async {
+    final index = _users.indexWhere((u) => u.id == userId);
+    if (index == -1) return false;
+
+    final user = _users[index];
+
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/users/$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': user.id,
+          'username': user.username,
+          'name': user.name,
+          'email': user.email,
+          'role': user.role,
+          'identity': user.identity,
+          'enrolledCourseIds': user.enrolledCourseIds,
+          'taughtCourseIds': user.taughtCourseIds,
+          'currentSemesterId': semesterId, // Cập nhật học kỳ ở đây
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _users[index] = user.copyWith(currentSemesterId: semesterId);
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Lỗi khi cập nhật học kỳ cho sinh viên: $e');
       return false;
     }
   }

@@ -93,6 +93,14 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
               children: [
                 Text('Email: ${user.email}'),
                 Text('Mã số: ${user.identity ?? "Chưa cập nhật"}', style: const TextStyle(color: Colors.grey)),
+                if (user.role == 'student')
+                  Padding(
+                    padding: const EdgeInsets.top(4.0),
+                    child: Text(
+                      'Học kỳ hiện tại: ${courseProvider.getSemesterName(user.currentSemesterId)}',
+                      style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                    ),
+                  ),
               ],
             ),
             trailing: Row(
@@ -100,9 +108,9 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
               children: [
                 if (user.role == 'student')
                   IconButton(
-                    icon: const Icon(Icons.book_rounded, color: Colors.blue),
-                    tooltip: 'Đăng ký môn học',
-                    onPressed: () => _showEnrollmentDialog(context, user, courseProvider, userProvider),
+                    icon: const Icon(Icons.calendar_month, color: Colors.blue),
+                    tooltip: 'Xếp Học kỳ cho sinh viên',
+                    onPressed: () => _showSemesterDialog(context, user, courseProvider, userProvider),
                   ),
                 IconButton(
                   icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
@@ -227,45 +235,54 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
     );
   }
 
-  void _showEnrollmentDialog(BuildContext context, UserModel initialStudent, CourseProvider courseProvider, UserProvider userProvider) {
+  // --- MỚI: Chọn học kỳ thay vì chọn môn học cho sinh viên ---
+  void _showSemesterDialog(BuildContext context, UserModel student, CourseProvider courseProvider, UserProvider userProvider) {
+    String? selectedSemesterId = student.currentSemesterId;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) {
-          final student = userProvider.users.firstWhere((u) => u.id == initialStudent.id);
-          final enrolledCourses = courseProvider.courses.where((c) => student.enrolledCourseIds.contains(c.id)).toList();
-          final availableCourses = courseProvider.courses.where((c) => !student.enrolledCourseIds.contains(c.id)).toList();
-
-          return AlertDialog(
-            title: Text('Môn học: ${student.name}'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Đã đăng ký:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ...enrolledCourses.map((c) => ListTile(
-                      title: Text(c.name),
-                      trailing: IconButton(icon: const Icon(Icons.remove_circle, color: Colors.red), onPressed: () async {
-                        if (await userProvider.unenrollUserFromCourse(student.id, c.id)) setStateDialog(() {});
-                      }),
-                    )),
-                    const Divider(),
-                    const Text('Chưa đăng ký:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ...availableCourses.map((c) => ListTile(
-                      title: Text(c.name),
-                      trailing: IconButton(icon: const Icon(Icons.add_circle, color: Colors.green), onPressed: () async {
-                        if (await userProvider.enrollUserInCourse(student.id, c.id)) setStateDialog(() {});
-                      }),
-                    )),
-                  ],
-                ),
-              ),
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text('Chọn Học kỳ cho: ${student.name}'),
+          content: DropdownButtonFormField<String>(
+            value: courseProvider.semesters.any((s) => s.id == selectedSemesterId) ? selectedSemesterId : null,
+            decoration: const InputDecoration(
+              labelText: 'Học kỳ phân bổ',
+              border: OutlineInputBorder(),
             ),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))],
-          );
-        },
+            items: [
+              const DropdownMenuItem<String>(
+                value: null,
+                child: Text('Chưa phân bổ / Trống'),
+              ),
+              ...courseProvider.semesters.map(
+                (s) => DropdownMenuItem<String>(value: s.id, child: Text(s.name)),
+              ),
+            ],
+            onChanged: (val) => setStateDialog(() => selectedSemesterId = val),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final success = await userProvider.updateStudentSemester(student.id, selectedSemesterId);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Cập nhật học kỳ thành công!' : 'Cập nhật thất bại.'),
+                      backgroundColor: success ? Colors.green : Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Lưu lại'),
+            ),
+          ],
+        ),
       ),
     );
   }
