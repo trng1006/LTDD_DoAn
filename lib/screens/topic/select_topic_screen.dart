@@ -300,7 +300,6 @@ class _SelectTopicScreenState extends State<SelectTopicScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final double topPad = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
