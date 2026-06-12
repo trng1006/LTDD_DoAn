@@ -314,6 +314,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
     final identityController = TextEditingController();
     String selectedRole = 'student';
     String? selectedSemesterId;
+    bool obscurePassword = true;
 
     showDialog(
       context: context,
@@ -365,7 +366,20 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                     TextFormField(controller: nameController, decoration: const InputDecoration(labelText: 'Họ và tên')),
                     TextFormField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
                     TextFormField(controller: identityController, decoration: InputDecoration(labelText: selectedRole == 'student' ? 'MSSV' : 'MSGV')),
-                    TextFormField(controller: passwordController, decoration: const InputDecoration(labelText: 'Mật khẩu'), obscureText: true),
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Mật khẩu',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () => setStateDialog(() => obscurePassword = !obscurePassword),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
