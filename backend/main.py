@@ -900,6 +900,15 @@ def approve_topic_registration(group_id: int, lecturer_id: str = Body(..., embed
             raise HTTPException(status_code=404, detail="Không tìm thấy nhóm hoặc đề tài")
         if group["lecturer_id"] != lecturer_id:
             raise HTTPException(status_code=403, detail="Bạn không phụ trách đề tài này.")
+        
+        cursor.execute("SELECT COUNT(*) AS total FROM group_members WHERE group_id=%s AND status='member'", (group_id,))
+        actual_members = cursor.fetchone()["total"]
+        if actual_members < group["min_members"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nhóm hiện tại chỉ có {actual_members} thành viên, chưa đủ tối thiểu {group['min_members']} thành viên để duyệt đề tài."
+            )
+
         cursor.execute("UPDATE `groups` SET status='approved', is_locked=TRUE WHERE id=%s", (group_id,))
         notify_group_members(
             cursor,

@@ -165,10 +165,20 @@ CREATE TRIGGER before_group_member_update_check BEFORE UPDATE ON `group_members`
 END //
 
 CREATE TRIGGER after_group_update_approved AFTER UPDATE ON `groups` FOR EACH ROW BEGIN
-    IF OLD.status <> 'approved' AND NEW.status = 'approved' AND NEW.topic_id IS NOT NULL THEN
+    -- Trường hợp 1: Nhóm được duyệt đề tài (Trạng thái chuyển sang 'approved')
+    IF (OLD.status <> 'approved' OR OLD.status IS NULL) AND NEW.status = 'approved' AND NEW.topic_id IS NOT NULL THEN
         UPDATE `topics` SET `current_groups` = `current_groups` + 1 WHERE `id` = NEW.topic_id;
-    ELSEIF OLD.status = 'approved' AND NEW.status <> 'approved' AND OLD.topic_id IS NOT NULL THEN
+    -- Trường hợp 2: Hủy duyệt hoặc đổi trạng thái nhóm đã duyệt về trạng thái khác
+    ELSEIF OLD.status = 'approved' AND (NEW.status <> 'approved' OR NEW.status IS NULL) AND OLD.topic_id IS NOT NULL THEN
         UPDATE `topics` SET `current_groups` = `current_groups` - 1 WHERE `id` = OLD.topic_id;
+    -- Trường hợp 3: Giữ nguyên trạng thái approved nhưng thay đổi topic_id (đổi đề tài)
+    ELSEIF OLD.status = 'approved' AND NEW.status = 'approved' AND (OLD.topic_id <> NEW.topic_id OR (OLD.topic_id IS NULL AND NEW.topic_id IS NOT NULL) OR (OLD.topic_id IS NOT NULL AND NEW.topic_id IS NULL)) THEN
+        IF OLD.topic_id IS NOT NULL THEN
+            UPDATE `topics` SET `current_groups` = `current_groups` - 1 WHERE `id` = OLD.topic_id;
+        END IF;
+        IF NEW.topic_id IS NOT NULL THEN
+            UPDATE `topics` SET `current_groups` = `current_groups` + 1 WHERE `id` = NEW.topic_id;
+        END IF;
     END IF;
 END //
 
@@ -176,6 +186,13 @@ CREATE TRIGGER after_group_delete AFTER DELETE ON `groups` FOR EACH ROW BEGIN
     IF OLD.status = 'approved' AND OLD.topic_id IS NOT NULL THEN
         UPDATE `topics` SET `current_groups` = `current_groups` - 1 WHERE `id` = OLD.topic_id;
     END IF;
+END //
+
+CREATE TRIGGER before_topic_delete BEFORE DELETE ON `topics` FOR EACH ROW BEGIN
+    -- Khi xóa đề tài, các nhóm đang đăng ký hoặc đã được duyệt đề tài này phải được reset trạng thái về 'creating' và mở khóa nhóm
+    UPDATE `groups` 
+    SET `status` = 'creating', `is_locked` = FALSE 
+    WHERE `topic_id` = OLD.id;
 END //
 
 DELIMITER ;
