@@ -12,9 +12,7 @@ import 'package:ungdungdangkinhomvachondetai/routes/app_pages.dart';
 import 'package:ungdungdangkinhomvachondetai/core/theme/app_theme.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/auth/login_screen.dart';
 import 'package:ungdungdangkinhomvachondetai/screens/home/home_screen.dart';
-
 import 'package:ungdungdangkinhomvachondetai/providers/course_provider.dart';
-
 import 'package:ungdungdangkinhomvachondetai/providers/user_provider.dart';
 
 void main() async {

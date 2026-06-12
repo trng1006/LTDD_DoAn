@@ -152,10 +152,28 @@ CREATE TRIGGER before_group_member_insert_check BEFORE INSERT ON `group_members`
     IF NEW.status = 'member' AND v_current_members >= v_max_members THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Nhóm đã đạt số lượng thành viên tối đa.'; END IF;
 END //
 
+CREATE TRIGGER before_group_member_update_check BEFORE UPDATE ON `group_members` FOR EACH ROW BEGIN
+    DECLARE v_current_members INT;
+    DECLARE v_max_members INT;
+    IF NEW.status = 'member' AND OLD.status <> 'member' THEN
+        SELECT COUNT(*) INTO v_current_members FROM group_members WHERE group_id = NEW.group_id AND status = 'member';
+        SELECT max_members INTO v_max_members FROM `groups` WHERE id = NEW.group_id;
+        IF v_current_members >= v_max_members THEN 
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Nhóm đã đạt số lượng thành viên tối đa.'; 
+        END IF;
+    END IF;
+END //
+
 CREATE TRIGGER after_group_update_approved AFTER UPDATE ON `groups` FOR EACH ROW BEGIN
     IF OLD.status <> 'approved' AND NEW.status = 'approved' AND NEW.topic_id IS NOT NULL THEN
         UPDATE `topics` SET `current_groups` = `current_groups` + 1 WHERE `id` = NEW.topic_id;
     ELSEIF OLD.status = 'approved' AND NEW.status <> 'approved' AND OLD.topic_id IS NOT NULL THEN
+        UPDATE `topics` SET `current_groups` = `current_groups` - 1 WHERE `id` = OLD.topic_id;
+    END IF;
+END //
+
+CREATE TRIGGER after_group_delete AFTER DELETE ON `groups` FOR EACH ROW BEGIN
+    IF OLD.status = 'approved' AND OLD.topic_id IS NOT NULL THEN
         UPDATE `topics` SET `current_groups` = `current_groups` - 1 WHERE `id` = OLD.topic_id;
     END IF;
 END //

@@ -778,6 +778,8 @@ def approve_member(group_id: int, user_id: str = Body(..., embed=True)):
         group = cursor.fetchone()
         if not group:
             raise HTTPException(status_code=404, detail="Không tìm thấy nhóm")
+        if group["is_locked"]:
+            raise HTTPException(status_code=400, detail="Nhóm đã khóa đề tài, không thể duyệt thành viên.")
         cursor.execute("UPDATE group_members SET status='member' WHERE group_id=%s AND user_id=%s", (group_id, user_id))
         if cursor.rowcount == 0:
             cursor.execute("INSERT INTO group_members (group_id, user_id, status) VALUES (%s, %s, 'member')", (group_id, user_id))
@@ -810,6 +812,8 @@ def remove_member(group_id: int, user_id: str):
         group = cursor.fetchone()
         if not group:
             raise HTTPException(status_code=404, detail="Không tìm thấy nhóm")
+        if group["is_locked"]:
+            raise HTTPException(status_code=400, detail="Nhóm đã khóa đề tài, không thể thay đổi thành viên.")
         cursor.execute("SELECT status FROM group_members WHERE group_id=%s AND user_id=%s", (group_id, user_id))
         member = cursor.fetchone()
         cursor.execute("DELETE FROM group_members WHERE group_id=%s AND user_id=%s", (group_id, user_id))
