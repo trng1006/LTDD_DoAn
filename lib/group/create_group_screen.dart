@@ -80,6 +80,21 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     
     // Only show courses the student is enrolled in
     final enrolledCourses = courses.where((c) => user?.enrolledCourseIds.contains(c.id) ?? false).toList();
+    final selectedCourseId = enrolledCourses.any((c) => c.id == _selectedCourseId)
+        ? _selectedCourseId
+        : null;
+
+    if (_selectedCourseId != selectedCourseId ||
+        (_selectedCourseId == null && enrolledCourses.isNotEmpty)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _selectedCourseId =
+              selectedCourseId ??
+              (enrolledCourses.isNotEmpty ? enrolledCourses.first.id : null);
+        });
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tạo nhóm mới')),
@@ -91,8 +106,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
+                key: ValueKey(_selectedCourseId),
                 isExpanded: true,
-                initialValue: _selectedCourseId,
+                initialValue: selectedCourseId,
                 decoration: const InputDecoration(
                   labelText: 'Môn học',
                   border: OutlineInputBorder(),

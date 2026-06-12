@@ -109,7 +109,9 @@ class _ManageCoursesScreenState extends State<ManageCoursesScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Thuộc học kỳ'),
-                  initialValue: selectedSemesterId,
+                  initialValue: (selectedSemesterId == null || provider.semesters.any((s) => s.id == selectedSemesterId))
+                      ? selectedSemesterId
+                      : null,
                   items: provider.semesters
                       .map(
                         (s) =>

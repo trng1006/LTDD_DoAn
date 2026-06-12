@@ -150,6 +150,18 @@ class _TopicListScreenState extends State<TopicListScreen> {
       relevantCourses = courses;
     }
 
+    final hasSelectedCourse = _selectedCourseId == 'all' || relevantCourses.any((c) => c.id == _selectedCourseId);
+    final dropdownValue = hasSelectedCourse ? _selectedCourseId : 'all';
+
+    if (_selectedCourseId != dropdownValue) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _selectedCourseId = dropdownValue;
+        });
+      });
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       color: Theme.of(context).colorScheme.surface,
@@ -171,8 +183,9 @@ class _TopicListScreenState extends State<TopicListScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
+                  key: ValueKey(dropdownValue),
                   isExpanded: true,
-                  initialValue: _selectedCourseId ?? 'all',
+                  initialValue: dropdownValue ?? 'all',
                   decoration: const InputDecoration(
                     labelText: 'Môn học',
                     contentPadding: EdgeInsets.symmetric(

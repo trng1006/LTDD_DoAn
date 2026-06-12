@@ -341,7 +341,9 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> with Single
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedSemesterId,
+                          initialValue: (selectedSemesterId == null || courseProvider.semesters.any((s) => s.id == selectedSemesterId))
+                              ? selectedSemesterId
+                              : null,
                           decoration: const InputDecoration(
                             labelText: 'Chọn Học kỳ',
                             border: OutlineInputBorder(),

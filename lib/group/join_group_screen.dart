@@ -102,6 +102,9 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
     final allCourses = context.watch<CourseProvider>().courses;
     final enrolledCourses =
         allCourses.where((c) => user?.enrolledCourseIds.contains(c.id) ?? false).toList();
+    final selectedCourseId = enrolledCourses.any((c) => c.id == _selectedCourseId)
+        ? _selectedCourseId
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tham gia nhóm')),
@@ -112,8 +115,9 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
+                  key: ValueKey(_selectedCourseId),
                   isExpanded: true,
-                  initialValue: _selectedCourseId,
+                  initialValue: selectedCourseId,
                   decoration: const InputDecoration(
                     labelText: 'Môn học',
                     border: OutlineInputBorder(),
