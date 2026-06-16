@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../models/group_model.dart';
-import '../../models/topic_model.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/group_provider.dart';
-import '../../providers/topic_provider.dart';
-import 'create_group_screen.dart';
-import 'group_detail_screen.dart';
+import 'package:ungdungdangkinhomvachondetai/models/group_model.dart';
+import 'package:ungdungdangkinhomvachondetai/models/topic_model.dart';
+import 'package:ungdungdangkinhomvachondetai/providers/auth_provider.dart';
+import 'package:ungdungdangkinhomvachondetai/providers/group_provider.dart';
+import 'package:ungdungdangkinhomvachondetai/providers/topic_provider.dart';
+import 'package:ungdungdangkinhomvachondetai/screens/group/create_group_screen.dart';
+import 'package:ungdungdangkinhomvachondetai/screens/group/group_detail_screen.dart';
 
 class ManageGroupScreen extends StatefulWidget {
   const ManageGroupScreen({super.key});
@@ -20,15 +19,19 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<AuthProvider>().user;
-      if (user?.role == 'lecturer') {
-        context.read<TopicProvider>().fetchTopics(lecturerId: user!.id);
-        context.read<GroupProvider>().fetchGroups(lecturerId: user.id);
-      } else {
-        context.read<GroupProvider>().fetchGroups();
-      }
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+  }
+
+  Future<void> _reload() async {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) return;
+    if (user.role == 'lecturer') {
+      await context.read<TopicProvider>().fetchTopics(lecturerId: user.id);
+      if (!mounted) return;
+      await context.read<GroupProvider>().fetchGroups(lecturerId: user.id);
+    } else {
+      await context.read<GroupProvider>().fetchGroups();
+    }
   }
 
   @override
@@ -86,30 +89,34 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
       appBar: AppBar(
         title: const Text('Duyệt nhóm đăng ký'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              topicProvider.fetchTopics(lecturerId: lecturerId);
-              groupProvider.fetchGroups(lecturerId: lecturerId);
-            },
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _reload),
         ],
       ),
-      body: groupProvider.isLoading && groups.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : groups.isEmpty
-          ? const Center(
-              child: Text('Chưa có nhóm nào đăng ký đề tài của bạn.'),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: groups.length,
-              itemBuilder: (context, index) {
-                final group = groups[index];
-                final topic = _topicOf(topicProvider.topics, group.topicId);
-                return _lecturerGroupCard(context, group, topic, lecturerId);
-              },
-            ),
+      body: RefreshIndicator(
+        onRefresh: _reload,
+        child: groupProvider.isLoading && groups.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : groups.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 220),
+                  Center(
+                    child: Text('Chưa có nhóm nào đăng ký đề tài của bạn.'),
+                  ),
+                ],
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: groups.length,
+                itemBuilder: (context, index) {
+                  final group = groups[index];
+                  final topic = _topicOf(topicProvider.topics, group.topicId);
+                  return _lecturerGroupCard(context, group, topic, lecturerId);
+                },
+              ),
+      ),
     );
   }
 
@@ -147,7 +154,7 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
                     Text(topic?.title ?? 'Không rõ đề tài'),
                     const SizedBox(height: 2),
                     Text(
-                      '${group.memberIds.length}/${group.maxMembers} thành viên • Trưởng nhóm: ${group.leaderId}',
+                      '${group.memberIds.length}/${group.maxMembers} thành viên - Trưởng nhóm: ${group.leaderId}',
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -209,7 +216,7 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
     GroupProvider groupProvider,
   ) {
     final myGroups = groupProvider.groups
-        .where((g) => g.memberIds.contains(userId))
+        .where((group) => group.memberIds.contains(userId))
         .toList();
 
     return Scaffold(
@@ -282,7 +289,11 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
                         ),
                       ],
                     ),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: group.invitedMemberIds.contains(context.read<AuthProvider>().user?.id) 
+                        ? const Text('Có lời mời', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold))
+                        : group.pendingMemberIds.contains(context.read<AuthProvider>().user?.id)
+                            ? const Text('Đang chờ', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))
+                            : const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -332,9 +343,44 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
     String groupId,
     String lecturerId,
   ) async {
+    final reasonController = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nhập lý do từ chối'),
+        content: TextField(
+          controller: reasonController,
+          decoration: const InputDecoration(hintText: 'Lý do từ chối...'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Vui lòng nhập lý do')),
+                );
+                return;
+              }
+              Navigator.pop(context, reasonController.text.trim());
+            },
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (reason == null) return;
+
+    if (!context.mounted) return;
     final error = await context.read<GroupProvider>().rejectTopicRegistration(
       groupId,
       lecturerId,
+      reason: reason,
     );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

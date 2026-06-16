@@ -387,6 +387,49 @@ class ApiService {
     }
   }
 
+  
+  Future<bool> inviteMember(String groupId, String userId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/groups/$groupId/invite-member'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Invite Member Error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> acceptInvite(String groupId, String userId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/groups/$groupId/accept-invite'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Accept Invite Error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> rejectInvite(String groupId, String userId, String reason) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/groups/$groupId/reject-invite'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId, 'reason': reason}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Reject Invite Error: $e');
+      return false;
+    }
+  }
+
   Future<bool> approveMember(String groupId, String userId) async {
     try {
       final response = await http.post(
@@ -401,11 +444,12 @@ class ApiService {
     }
   }
 
-  Future<bool> removeMember(String groupId, String userId) async {
+  Future<bool> removeMember(String groupId, String userId, {String? reason}) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/groups/$groupId/members/$userId'),
+      final uri = Uri.parse('$baseUrl/groups/$groupId/members/$userId').replace(
+        queryParameters: reason != null && reason.isNotEmpty ? {'reason': reason} : null,
       );
+      final response = await http.delete(uri);
       return response.statusCode == 200;
     } catch (e) {
       debugPrint('Remove Member Error: $e');

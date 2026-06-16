@@ -289,7 +289,11 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
                         ),
                       ],
                     ),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: group.invitedMemberIds.contains(context.read<AuthProvider>().user?.id) 
+                        ? const Text('Có lời mời', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold))
+                        : group.pendingMemberIds.contains(context.read<AuthProvider>().user?.id)
+                            ? const Text('Đang chờ', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))
+                            : const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -339,9 +343,44 @@ class _ManageGroupScreenState extends State<ManageGroupScreen> {
     String groupId,
     String lecturerId,
   ) async {
+    final reasonController = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nhập lý do từ chối'),
+        content: TextField(
+          controller: reasonController,
+          decoration: const InputDecoration(hintText: 'Lý do từ chối...'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Vui lòng nhập lý do')),
+                );
+                return;
+              }
+              Navigator.pop(context, reasonController.text.trim());
+            },
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (reason == null) return;
+
+    if (!context.mounted) return;
     final error = await context.read<GroupProvider>().rejectTopicRegistration(
       groupId,
       lecturerId,
+      reason: reason,
     );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

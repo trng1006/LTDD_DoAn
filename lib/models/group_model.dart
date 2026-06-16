@@ -6,7 +6,8 @@ class GroupModel {
   final int maxMembers;
   final int minMembers;
   final List<String> memberIds;
-  final List<String> pendingMemberIds; // Added for flowchart step 5
+  final List<String> pendingMemberIds;
+  final List<String> invitedMemberIds; // Added for flowchart step 5
   final String leaderId;
   final String? topicId;
   final String status; // 'creating', 'pending_approval', 'approved'
@@ -21,6 +22,7 @@ class GroupModel {
     this.minMembers = 2,
     required this.memberIds,
     required this.pendingMemberIds,
+    this.invitedMemberIds = const [],
     required this.leaderId,
     this.topicId,
     this.status = 'creating',
@@ -37,6 +39,7 @@ class GroupModel {
       minMembers: json['minMembers'] ?? 2,
       memberIds: List<String>.from(json['memberIds'] ?? []),
       pendingMemberIds: List<String>.from(json['pendingMemberIds'] ?? []),
+      invitedMemberIds: List<String>.from(json['invitedMemberIds'] ?? []),
       leaderId: json['leaderId'] ?? '',
       topicId: json['topicId'],
       status: json['status'] ?? 'creating',
@@ -54,6 +57,7 @@ class GroupModel {
       'minMembers': minMembers,
       'memberIds': memberIds,
       'pendingMemberIds': pendingMemberIds,
+      'invitedMemberIds': invitedMemberIds,
       'leaderId': leaderId,
       'topicId': topicId,
       'status': status,
@@ -69,6 +73,7 @@ class GroupModel {
     int? minMembers,
     List<String>? memberIds,
     List<String>? pendingMemberIds,
+    List<String>? invitedMemberIds,
     String? topicId,
     String? status,
     bool? isLocked,
@@ -82,6 +87,7 @@ class GroupModel {
       minMembers: minMembers ?? this.minMembers,
       memberIds: memberIds ?? this.memberIds,
       pendingMemberIds: pendingMemberIds ?? this.pendingMemberIds,
+      invitedMemberIds: invitedMemberIds ?? this.invitedMemberIds,
       leaderId: leaderId,
       topicId: topicId ?? this.topicId,
       status: status ?? this.status,

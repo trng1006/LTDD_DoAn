@@ -624,11 +624,45 @@ class _TopicListScreenState extends State<TopicListScreen> {
                 const SizedBox(width: 8),
                 OutlinedButton(
                   onPressed: () async {
+                    final reasonController = TextEditingController();
+                    final reason = await showDialog<String>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Nhập lý do từ chối'),
+                        content: TextField(
+                          controller: reasonController,
+                          decoration: const InputDecoration(hintText: 'Lý do từ chối...'),
+                          autofocus: true,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Hủy'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (reasonController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(content: Text('Vui lòng nhập lý do')),
+                                );
+                                return;
+                              }
+                              Navigator.pop(ctx, reasonController.text.trim());
+                            },
+                            child: const Text('Xác nhận'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (reason == null) return;
+
+                    if (!context.mounted) return;
                     final error = await context
                         .read<GroupProvider>()
-                        .rejectTopicRegistration(group.id, lecturerId);
+                        .rejectTopicRegistration(group.id, lecturerId, reason: reason);
                     if (!context.mounted) return;
-                    Navigator.pop(context);
+                    Navigator.pop(context); // Close the outer dialog if needed, wait, the original code had this.
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(error ?? 'Đã từ chối đăng ký.'),

@@ -18,7 +18,7 @@ class GroupProvider with ChangeNotifier {
   GroupModel? groupOfUserInCourse(String userId, String courseId) {
     for (final g in _groups) {
       if (g.courseId == courseId &&
-          (g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId))) {
+          (g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId) || g.invitedMemberIds.contains(userId))) {
         return g;
       }
     }
@@ -38,7 +38,7 @@ class GroupProvider with ChangeNotifier {
   /// Kiểm tra [userId] đã thuộc nhóm nào (bất kỳ môn) chưa.
   bool isInAnyGroup(String userId) {
     return _groups.any((g) =>
-        g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId));
+        g.memberIds.contains(userId) || g.pendingMemberIds.contains(userId) || g.invitedMemberIds.contains(userId));
   }
 
   Future<void> fetchGroups({
@@ -105,18 +105,42 @@ class GroupProvider with ChangeNotifier {
     return error;
   }
 
+  Future<bool> inviteMember(String groupId, String userId) async {
+    final success = await _apiService.inviteMember(groupId, userId);
+    if (success) {
+      await fetchGroups();
+    }
+    return success;
+  }
+
+  Future<bool> acceptInvite(String groupId, String userId) async {
+    final success = await _apiService.acceptInvite(groupId, userId);
+    if (success) {
+      await fetchGroups();
+    }
+    return success;
+  }
+
+  Future<bool> rejectInvite(String groupId, String userId, String reason) async {
+    final success = await _apiService.rejectInvite(groupId, userId, reason);
+    if (success) {
+      await fetchGroups();
+    }
+    return success;
+  }
+
   Future<void> acceptMember(String groupId, String userId) async {
     bool success = await _apiService.approveMember(groupId, userId);
     if (success) await fetchGroups();
   }
 
-  Future<void> rejectMember(String groupId, String userId) async {
-    bool success = await _apiService.removeMember(groupId, userId);
+  Future<void> rejectMember(String groupId, String userId, {String? reason}) async {
+    bool success = await _apiService.removeMember(groupId, userId, reason: reason);
     if (success) await fetchGroups();
   }
 
-  Future<void> removeMember(String groupId, String userId) async {
-    bool success = await _apiService.removeMember(groupId, userId);
+  Future<void> removeMember(String groupId, String userId, {String? reason}) async {
+    bool success = await _apiService.removeMember(groupId, userId, reason: reason);
     if (success) await fetchGroups();
   }
 
